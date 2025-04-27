@@ -32,4 +32,5 @@ AplicaciÃ³n web para venta de entradas utilizada en la cursada 2025 de IngenierÃ
 
 ## Participantes
 Franco Beneforti
+
 Lucas Diez
