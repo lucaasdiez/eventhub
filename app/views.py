@@ -3,7 +3,9 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.contrib import messages
 
+from .forms import EventForm  
 from .models import Event, User
 
 
@@ -60,68 +62,43 @@ def home(request):
 
 @login_required
 def events(request):
-    events = Event.objects.all().order_by("scheduled_at")
-    return render(
-        request,
-        "app/events.html",
-        {"events": events, "user_is_organizer": request.user.is_organizer},
-    )
-
+    queryset = Event.objects.all().order_by("scheduled_at")
+    if not request.user.is_organizer:
+        queryset = queryset.filter(scheduled_at__gte=timezone.now())
+    return render(request, "app/events.html", {"events": queryset})
 
 @login_required
-def event_detail(request, id):
-    event = get_object_or_404(Event, pk=id)
+def event_detail(request, pk):
+    event = get_object_or_404(Event, pk=pk)
     return render(request, "app/event_detail.html", {"event": event})
 
 
+
 @login_required
-def event_delete(request, id):
-    user = request.user
-    if not user.is_organizer:
+def event_delete(request, pk):
+    if not request.user.is_organizer:
+        messages.error(request, "No tienes permisos")
         return redirect("events")
 
+    event = get_object_or_404(Event, pk=pk)
     if request.method == "POST":
-        event = get_object_or_404(Event, pk=id)
         event.delete()
+        messages.success(request, "Evento eliminado")
         return redirect("events")
 
-    return redirect("events")
-
+    return render(request, "app/event_confirm_delete.html", {"event": event})
 
 @login_required
-def event_form(request, id=None):
-    user = request.user
-
-    if not user.is_organizer:
-        return redirect("events")
-
-    if request.method == "POST":
-        title = request.POST.get("title")
-        description = request.POST.get("description")
-        date = request.POST.get("date")
-        time = request.POST.get("time")
-
-        [year, month, day] = date.split("-")
-        [hour, minutes] = time.split(":")
-
-        scheduled_at = timezone.make_aware(
-            datetime.datetime(int(year), int(month), int(day), int(hour), int(minutes))
-        )
-
-        if id is None:
-            Event.new(title, description, scheduled_at, request.user)
-        else:
-            event = get_object_or_404(Event, pk=id)
-            event.update(title, description, scheduled_at, request.user)
-
-        return redirect("events")
-
-    event = {}
-    if id is not None:
-        event = get_object_or_404(Event, pk=id)
-
-    return render(
-        request,
-        "app/event_form.html",
-        {"event": event, "user_is_organizer": request.user.is_organizer},
-    )
+def event_form(request, pk=None):
+    event = get_object_or_404(Event, pk=pk) if pk else None
+    if request.method == 'POST':
+        form = EventForm(request.POST, instance=event)
+        if form.is_valid():
+            event = form.save(commit=False)
+            event.organizer = request.user
+            event.save()
+            return redirect('event_detail', pk=event.pk)
+    else:
+        form = EventForm(instance=event)
+    
+    return render(request, 'app/event_form.html', {'form': form})

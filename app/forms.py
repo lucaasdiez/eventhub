@@ -1,21 +1,31 @@
 from django import forms
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from .models import Event
 
-class EventForm(forms.Form):
-    title = forms.CharField(max_length=200, required=true)
-    description = forms.CharField(widget=forms.Textarea, required=True)
-    scheduled_at = forms.DateTimeField(required=True)
+class EventForm(forms.ModelForm):
+    class Meta:
+        model = Event
+        fields = ['title', 'description', 'scheduled_at']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'scheduled_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
+        }
 
-def clean(self):
-    cleaned_data = super(),clean()
-    title = cleaned_data.get('title')
-    description = cleaned_data.get('description')
-    scheduled_at = cleaned_data.get('scheduled_at')
+    def clean_title(self):
+        title = self.cleaned_data.get('title')
+        if len(title.strip()) < 5:
+            raise ValidationError("El título debe tener al menos 5 caracteres.")
+        return title
 
-    from .models import Event
-    errors = Event.validate(title, description, scheduled_at)
+    def clean_description(self):
+        description = self.cleaned_data.get('description')
+        if len(description.strip()) < 20:
+            raise ValidationError("La descripción debe tener al menos 20 caracteres.")
+        return description
 
-    if errors:
-        for field, error in errors.items():
-            self.add_error(field, error)
-    
-    return cleaned_data
+    def clean_scheduled_at(self):
+        scheduled_at = self.cleaned_data.get('scheduled_at')
+        if scheduled_at and scheduled_at < timezone.now():
+            raise ValidationError("La fecha/hora debe ser futura.")
+        return scheduled_at

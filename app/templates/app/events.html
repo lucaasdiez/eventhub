@@ -6,53 +6,54 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Eventos</h1>
-        {% if user_is_organizer %}
-            <a
-                href="{% url 'event_form' %}"
-                class="btn btn-primary"
-            >
+        {% if request.user.is_organizer %}
+            <a href="{% url 'event_create' %}" class="btn btn-primary">
                 <i class="bi bi-plus-circle me-2" aria-hidden="true"></i>
                 Crear Evento
             </a>
         {% endif %}
     </div>
+    
     <table class="table">
         <thead>
             <tr>
                 <th>Título</th>
                 <th>Descripción</th>
                 <th>Fecha</th>
+                <th>Organizador</th>
                 <th>Acciones</th>
             </tr>
         </thead>
         <tbody>
-            {% for event in events%}
+            {% for event in events %}
                 <tr>
                     <td>{{ event.title }}</td>
-                    <td>{{ event.description }}</td>
-                    <td>{{ event.scheduled_at|date:"d b Y, H:i" }}</td>
+                    <td>{{ event.description|truncatechars:50 }}</td>
+                    <td>{{ event.scheduled_at|date:"d M Y, H:i" }}</td>
+                    <td>{{ event.organizer.username }}</td>
                     <td>
-                        <div class="hstack gap-1">
+                        <div class="hstack gap-2">
                             <a href="{% url 'event_detail' event.id %}"
                                class="btn btn-sm btn-outline-primary"
                                aria-label="Ver detalle"
                                title="Ver detalle">
                                 <i class="bi bi-eye" aria-hidden="true"></i>
                             </a>
-                            {% if user_is_organizer %}
+                            
+                            {% if request.user == event.organizer %}
                                 <a href="{% url 'event_edit' event.id %}"
                                     class="btn btn-sm btn-outline-secondary"
                                     aria-label="Editar"
                                     title="Editar">
                                     <i class="bi bi-pencil" aria-hidden="true"></i>
                                 </a>
-                                <form action="{% url 'event_delete' event.id %}" method="POST">
+                                
+                                <form action="{% url 'event_delete' event.id %}" method="POST" class="d-inline">
                                     {% csrf_token %}
-                                    <button class="btn btn-sm btn-outline-danger"
-                                        title="Eliminar"
-                                        type="submit"
-                                        aria-label="Eliminar"
-                                        titile="Eliminar">
+                                    <button type="submit" 
+                                            class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm('¿Eliminar este evento permanentemente?')"
+                                            title="Eliminar">
                                         <i class="bi bi-trash" aria-hidden="true"></i>
                                     </button>
                                 </form>
@@ -62,7 +63,14 @@
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="4" class="text-center">No hay eventos disponibles</td>
+                    <td colspan="5" class="text-center py-4">
+                        <div class="alert alert-info">
+                            No hay eventos disponibles
+                            {% if request.user.is_organizer %}
+                                - <a href="{% url 'event_create' %}">Crear primer evento</a>
+                            {% endif %}
+                        </div>
+                    </td>
                 </tr>
             {% endfor %}
         </tbody>
