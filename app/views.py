@@ -1,10 +1,11 @@
 import datetime
+
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .models import Event, User
+from .models import Event, User, Venue
 
 
 def register(request):
@@ -125,3 +126,60 @@ def event_form(request, id=None):
         "app/event_form.html",
         {"event": event, "user_is_organizer": request.user.is_organizer},
     )
+
+
+@login_required
+def venue_list(request):
+    if not request.user.is_organizer:
+        return redirect('events')
+    venues = Venue.objects.filter(created_by=request.user)
+    return render(request, 'app/venue_list.html', {
+        'venues': venues,
+        'user_is_organizer': request.user.is_organizer
+        })
+
+@login_required
+def venue_form(request, id=None):
+    if not request.user.is_organizer:
+        return redirect('events')
+
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        address = request.POST.get('address')
+        city = request.POST.get('city')
+        capacity = request.POST.get('capacity')
+        contact_info = request.POST.get('contact_info')
+
+        if id:
+            venue = get_object_or_404(Venue, pk=id)
+            venue.name = name
+            venue.address = address
+            venue.city = city
+            venue.capacity = capacity
+            venue.contact_info = contact_info
+            venue.save()
+        else:
+            Venue.objects.create(
+                name=name,
+                address=address,
+                city=city,
+                capacity=capacity,
+                contact_info=contact_info,
+                created_by=request.user
+            )
+        return redirect('venue_list')
+
+    venue = {}
+    if id:
+        venue = get_object_or_404(Venue, pk=id)
+    return render(request, 'app/venue_form.html', {'venue': venue})
+
+@login_required
+def venue_delete(request, id):
+    if not request.user.is_organizer:
+        return redirect('events')
+    
+    venue = get_object_or_404(Venue, pk=id)
+    if request.method == 'POST':
+        venue.delete()
+    return redirect('venue_list')

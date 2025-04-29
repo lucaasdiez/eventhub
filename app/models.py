@@ -28,7 +28,7 @@ class User(AbstractUser):
 
 
 class Event(models.Model):
-    title = models.CharField(max_length=200)
+    title = models.CharField(max_length=200, blank=False) #blank = false, atributo requerido en la creacion
     description = models.TextField()
     scheduled_at = models.DateTimeField()
     organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="organized_events")
@@ -73,3 +73,15 @@ class Event(models.Model):
         self.organizer = organizer or self.organizer
 
         self.save()
+
+
+class Venue(models.Model):
+    name = models.CharField(max_length=200)
+    address = models.CharField(max_length=300)
+    city = models.CharField(max_length=100)
+    capacity = models.PositiveIntegerField()
+    contact_info = models.TextField()
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
