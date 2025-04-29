@@ -50,13 +50,18 @@ def login_view(request):
             )
 
         login(request, user)
-        return redirect("events")
+        return redirect("home")
 
     return render(request, "accounts/login.html")
 
 
 def home(request):
-    return render(request, "home.html")
+    user = request.user
+    user_is_organizer = user.is_organizer
+
+    return render(request, 'home.html', {
+        'user_is_organizer': user_is_organizer
+    })
 
 
 @login_required
@@ -138,7 +143,6 @@ def venue_list(request):
         'user_is_organizer': request.user.is_organizer
         })
 
-@login_required
 def venue_form(request, id=None):
     if not request.user.is_organizer:
         return redirect('events')
@@ -152,14 +156,15 @@ def venue_form(request, id=None):
 
         if id:
             venue = get_object_or_404(Venue, pk=id)
-            venue.name = name
-            venue.address = address
-            venue.city = city
-            venue.capacity = capacity
-            venue.contact_info = contact_info
-            venue.save()
+            venue.update(
+                name=name,
+                address=address,
+                city=city,
+                capacity=capacity,
+                contact_info=contact_info
+            )
         else:
-            Venue.objects.create(
+            success, errors = Venue.new(
                 name=name,
                 address=address,
                 city=city,
@@ -167,11 +172,19 @@ def venue_form(request, id=None):
                 contact_info=contact_info,
                 created_by=request.user
             )
+
+            if not success:
+                return render(request, 'app/venue_form.html', {
+                    'errors': errors,
+                    'venue_data': request.POST
+                })
+
         return redirect('venue_list')
 
     venue = {}
     if id:
         venue = get_object_or_404(Venue, pk=id)
+    
     return render(request, 'app/venue_form.html', {'venue': venue})
 
 @login_required

@@ -29,9 +29,9 @@ class User(AbstractUser):
 
 class Event(models.Model):
     title = models.CharField(max_length=200, blank=False) #blank = false, atributo requerido en la creacion
-    description = models.TextField()
-    scheduled_at = models.DateTimeField()
-    organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="organized_events")
+    description = models.TextField(blank=False)
+    scheduled_at = models.DateTimeField(blank=False)
+    organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="organized_events", blank=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -76,12 +76,61 @@ class Event(models.Model):
 
 
 class Venue(models.Model):
-    name = models.CharField(max_length=200)
-    address = models.CharField(max_length=300)
-    city = models.CharField(max_length=100)
-    capacity = models.PositiveIntegerField()
-    contact_info = models.TextField()
+    name = models.CharField(max_length=200, blank=False)
+    address = models.CharField(max_length=300, blank=False)
+    city = models.CharField(max_length=100, blank=False)
+    capacity = models.PositiveIntegerField(blank=False)
+    contact_info = models.TextField(blank=False)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
+    
+    @classmethod
+    def validate(cls, name, address, city, capacity, contact_info):
+        errors = {}
+
+        if not name:
+            errors["name"] = "El nombre es requerido"
+        if not address:
+            errors["address"] = "La dirección es requerida"
+        if not city:
+            errors["city"] = "La ciudad es requerida"
+        if not capacity:
+            errors["capacity"] = "La capacidad es requerida"
+        elif int(capacity) <= 0:
+            errors["capacity"] = "La capacidad debe ser mayor a cero"
+        if not contact_info:
+            errors["contact_info"] = "La información de contacto es requerida"
+
+        return errors
+    
+    @classmethod
+    def new(cls, name, address, city, capacity, contact_info, created_by):
+        errors = Venue.validate( name, address, city, capacity, contact_info)
+
+        if len(errors.keys()) > 0:
+            return False, errors
+        
+        Venue.objects.create(
+            name=name,
+            address=address,
+            city=city,
+            capacity=capacity,
+            contact_info=contact_info,
+            created_by=created_by
+        )
+        return True, None
+    
+    
+    def update(self, name, address, city, capacity, contact_info):
+        self.name = name or self.name
+        self.address = address or self.address
+        self.city = city or self.city
+        self.capacity = capacity or self.capacity
+        self.contact_info = contact_info or self.contact_info
+        self.save()
+
+
+
+
