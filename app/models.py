@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -73,3 +74,21 @@ class Event(models.Model):
         self.organizer = organizer or self.organizer
 
         self.save()
+
+class Comment(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    title = models.CharField(max_length=120)
+    content =models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        #Validacion: Titulo y contenido no pueden estar vacios
+        if not self.title.strip():
+            raise ValidationError("El titulo del comentario no puede estar vacio....")
+        if not self.content.strip():
+            raise ValidationError("El contenido del comentario no debe de estar vacio para realizar el comentario...")
+        
+    def __str__(self):
+        return f"{self.user.username} - {self.event.title}"
