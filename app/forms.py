@@ -1,16 +1,23 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Event
+from .models import Event, Venue
 
 class EventForm(forms.ModelForm):
     class Meta:
         model = Event
-        fields = ['title', 'description', 'scheduled_at']
+        fields = ['title', 'description', 'scheduled_at', 'venue']
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
             'scheduled_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
+            'venue': forms.Select(attrs={'class': 'form-select'})
         }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if self.user:
+            self.fields['venue'].queryset = Venue.objects.filter(created_by=self.user)
 
     def clean_title(self):
         title = self.cleaned_data.get('title')

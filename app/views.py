@@ -60,6 +60,7 @@ def home(request):
     return render(request, "home.html")
 
 
+
 @login_required
 def events(request):
     queryset = Event.objects.all().order_by("scheduled_at")
@@ -69,7 +70,7 @@ def events(request):
 
 @login_required
 def event_detail(request, pk):
-    event = get_object_or_404(Event, pk=pk)
+    event = get_object_or_404(Event.objects.select_related('venue'), pk=pk)
     return render(request, "app/event_detail.html", {"event": event})
 
 
@@ -92,13 +93,13 @@ def event_delete(request, pk):
 def event_form(request, pk=None):
     event = get_object_or_404(Event, pk=pk) if pk else None
     if request.method == 'POST':
-        form = EventForm(request.POST, instance=event)
+        form = EventForm(request.POST, instance=event, user=request.user)
         if form.is_valid():
             event = form.save(commit=False)
             event.organizer = request.user
             event.save()
             return redirect('event_detail', pk=event.pk)
     else:
-        form = EventForm(instance=event)
+        form = EventForm(instance=event, user=request.user)
     
     return render(request, 'app/event_form.html', {'form': form})
