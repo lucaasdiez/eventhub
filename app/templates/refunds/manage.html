@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-dark text-white">
+            <h3>📋 Solicitudes de Reembolso</h3>
+            <div class="mt-2">
+                <a href="?status=pending" class="btn btn-sm btn-warning">⏳ Pendientes ({{ status_counts.pending }})</a>
+                <a href="?status=approved" class="btn btn-sm btn-success">✅ Aprobados ({{ status_counts.approved }})</a>
+                <a href="?status=rejected" class="btn btn-sm btn-danger">❌ Rechazados ({{ status_counts.rejected }})</a>
+            </div>
+        </div>
+        <div class="card-body">
+            {% include 'partials/messages.html' %}
+            
+            {% if user.is_organizer %}
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Código</th>
+                        <th>Evento</th>
+                        <th>Solicitante</th>
+                        <th>Monto</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for refund in refunds %}
+                    <tr>
+                        <td>{{ refund.ticket.code }}</td>
+                        <td>{{ refund.ticket.event.title }}</td>
+                        <td>{{ refund.user.username }}</td>
+                        <td>${{ refund.amount }}</td>
+                        <td>{{ refund.requested_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if refund.status == 'approved' %}bg-success
+                                {% elif refund.status == 'rejected' %}bg-danger
+                                {% else %}bg-warning{% endif %}">
+                                {{ refund.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'update_refund_status' refund.id 'approve' %}" 
+                               class="btn btn-sm btn-success me-1">✅ Aprobar</a>
+                            <a href="{% url 'update_refund_status' refund.id 'reject' %}" 
+                               class="btn btn-sm btn-danger me-1">❌ Rechazar</a>
+                            <a href="{% url 'refund_detail' refund.id %}" 
+                               class="btn btn-sm btn-info me-1">🔍 Detalle</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center">No hay solicitudes pendientes</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="alert alert-danger">❌ Acceso restringido a organizadores</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
