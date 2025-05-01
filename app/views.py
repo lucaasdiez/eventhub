@@ -1,8 +1,11 @@
+from django.shortcuts import render, redirect, get_object_or_404
 import datetime
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from .models import Comment, Event
+from .forms import CommentForm
 
 from .models import Event, User
 
@@ -15,7 +18,8 @@ def register(request):
         password = request.POST.get("password")
         password_confirm = request.POST.get("password-confirm")
 
-        errors = User.validate_new_user(email, username, password, password_confirm)
+        errors = User.validate_new_user(
+            email, username, password, password_confirm)
 
         if len(errors) > 0:
             return render(
@@ -45,7 +49,8 @@ def login_view(request):
 
         if user is None:
             return render(
-                request, "accounts/login.html", {"error": "Usuario o contraseña incorrectos"}
+                request, "accounts/login.html", {
+                    "error": "Usuario o contraseña incorrectos"}
             )
 
         login(request, user)
@@ -71,7 +76,25 @@ def events(request):
 @login_required
 def event_detail(request, id):
     event = get_object_or_404(Event, pk=id)
-    return render(request, "app/event_detail.html", {"event": event})
+    comments = Comment.objects.filter(event=event).order_by('-created_at')
+
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.event = event
+            comment.user = request.user
+            comment.save()
+            # redirige luego de guardar
+            return redirect('event_detail', id=event.id)
+    else:
+        form = CommentForm()
+
+    return render(request, 'app/event_detail.html', {
+        'event': event,
+        'comments': comments,
+        'form': form,
+    })
 
 
 @login_required
@@ -105,7 +128,8 @@ def event_form(request, id=None):
         [hour, minutes] = time.split(":")
 
         scheduled_at = timezone.make_aware(
-            datetime.datetime(int(year), int(month), int(day), int(hour), int(minutes))
+            datetime.datetime(int(year), int(month), int(
+                day), int(hour), int(minutes))
         )
 
         if id is None:
@@ -125,3 +149,22 @@ def event_form(request, id=None):
         "app/event_form.html",
         {"event": event, "user_is_organizer": request.user.is_organizer},
     )
+
+
+@login_required
+def comentarios_organizador(request):
+    # Solo comentarios de eventos del organizador actual
+    comentarios = Comment.objects.filter(
+        evento__organizador=request.user).select_related('evento', 'usuario')
+
+    return render(request, 'app/comentarios_organizador.html', {
+        'comentarios': comentarios
+    })
+
+
+@login_required
+def eliminar_comentario(request, comentario_id):
+    comentario = get_object_or_404(
+        Comentario, id=comentario_id, evento__organizador=request.user)
+    comentario.delete()
+    return redirect('app/comentarios_organizador')
