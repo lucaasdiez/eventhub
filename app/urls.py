@@ -13,7 +13,7 @@ urlpatterns = [
     path("events/<int:id>/edit/", views.event_form, name="event_edit"),
     path("events/<int:id>/", views.event_detail, name="event_detail"),
     path("events/<int:id>/delete/", views.event_delete, name="event_delete"),
-    path('comentarios/', views.comentarios_organizador,
+    path('comment/', views.comentarios_organizador,
          name='comentarios_organizador'),
     path('comentarios/eliminar/<int:comentario_id>/',
          views.eliminar_comentario, name='eliminar_comentario'),

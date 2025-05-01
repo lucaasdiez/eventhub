@@ -153,9 +153,9 @@ def event_form(request, id=None):
 
 @login_required
 def comentarios_organizador(request):
-    # Solo comentarios de eventos del organizador actual
+    # Comentarios solo de eventos que creó el organizador actual
     comentarios = Comment.objects.filter(
-        evento__organizador=request.user).select_related('evento', 'usuario')
+        event__organizer=request.user).select_related('event', 'user')
 
     return render(request, 'app/comentarios_organizador.html', {
         'comentarios': comentarios
@@ -165,6 +165,7 @@ def comentarios_organizador(request):
 @login_required
 def eliminar_comentario(request, comentario_id):
     comentario = get_object_or_404(
-        Comentario, id=comentario_id, evento__organizador=request.user)
+        Comment, id=comentario_id, event__organizer=request.user
+    )
     comentario.delete()
-    return redirect('app/comentarios_organizador')
+    return redirect('comentarios_organizador')
