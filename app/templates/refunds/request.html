@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h3>📝 Solicitar Reembolso</h3>
+        </div>
+        <div class="card-body">
+            <!-- Mensajes de Django -->
+            {% include 'partials/messages.html' %}
+            
+            {% if form.errors %}
+            <div class="alert alert-danger">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <div class="alert alert-info">
+                <strong>⚠️ Política:</strong> {{ policy_message }}
+            </div>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Código de Ticket:</label>
+                    <input type="text" class="form-control" 
+                           value="{{ ticket.code }}" readonly>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Motivo del reembolso:</label>
+                    {{ form.reason }}
+                </div>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" 
+                           id="accept_policy" name="accept_policy" required>
+                    <label class="form-check-label" for="accept_policy">
+                        Acepto la política de reembolsos
+                    </label>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-success me-md-2">Enviar Solicitud</button>
+                    <a href="{% url 'event_detail' id=ticket.event.id %}" class="btn btn-secondary">↩️ Volver</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
