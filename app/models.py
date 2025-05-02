@@ -1,9 +1,11 @@
+from datetime import timedelta
+from decimal import Decimal
+
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
-from datetime import timedelta
-from decimal import Decimal
+
 
 class User(AbstractUser):
     is_organizer = models.BooleanField(default=False)
@@ -28,56 +30,6 @@ class User(AbstractUser):
             errors["password"] = "Las contraseñas no coinciden"
 
         return errors
-
-class Event(models.Model):
-    id = models.AutoField(primary_key=True)
-    title = models.CharField(max_length=200)
-    description = models.TextField()
-    scheduled_at = models.DateTimeField()  
-    total_rating = models.IntegerField(default=0)
-    organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="organized_events")
-    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, blank=True)
-    venue = models.ForeignKey('Venue', on_delete=models.SET_NULL, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    # Campo nuevo requerido
-    premium = models.BooleanField(default=False, verbose_name="Evento Premium")  
-
-    def __str__(self):
-        return self.title
-
-    @classmethod
-    def validate(cls, title, description, scheduled_at):
-        errors = {}
-
-        if title == "":
-            errors["title"] = "Por favor ingrese un titulo"
-
-        if description == "":
-            errors["description"] = "Por favor ingrese una descripcion"
-
-        return errors
-
-    @classmethod
-    def new(cls, title, description, scheduled_at, organizer):
-        errors = Event.validate(title, description, scheduled_at)
-
-        if len(errors.keys()) > 0:
-            return False, errors
-
-        return Event.objects.create(
-            title=title,
-            description=description,
-            scheduled_at=scheduled_at,
-            organizer=organizer,
-        ), None
-
-    def update(self, title, description, scheduled_at, organizer):
-        self.title = title or self.title
-        self.description = description or self.description
-        self.scheduled_at = scheduled_at or self.scheduled_at
-        self.organizer = organizer or self.organizer
-        self.save()
 
 class Venue(models.Model):
     name = models.CharField(max_length=200, blank=False)
@@ -136,8 +88,6 @@ class Venue(models.Model):
         self.save()
 
 
-
-
   
 class Category(models.Model):
     name = models.CharField(max_length=100)
@@ -145,6 +95,59 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+    
+    
+class Event(models.Model):
+    id = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    scheduled_at = models.DateTimeField()  
+    total_rating = models.IntegerField(default=0)
+    organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="organized_events")
+    categories = models.ManyToManyField(Category, blank=True)    
+    venue = models.ForeignKey(Venue, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    premium = models.BooleanField(default=False, verbose_name="Evento Premium")  
+
+    def __str__(self):
+        return self.title
+
+    @classmethod
+    def validate(cls, title, description, scheduled_at):
+        errors = {}
+
+        if title == "":
+            errors["title"] = "Por favor ingrese un titulo"
+
+        if description == "":
+            errors["description"] = "Por favor ingrese una descripcion"
+
+        return errors
+
+    @classmethod
+    def new(cls, title, description, scheduled_at, organizer):
+        errors = Event.validate(title, description, scheduled_at)
+
+        if len(errors.keys()) > 0:
+            return False, errors
+
+        return Event.objects.create(
+            title=title,
+            description=description,
+            scheduled_at=scheduled_at,
+            organizer=organizer,
+        ), None
+
+    def update(self, title, description, scheduled_at, organizer):
+        self.title = title or self.title
+        self.description = description or self.description
+        self.scheduled_at = scheduled_at or self.scheduled_at
+        self.organizer = organizer or self.organizer
+        self.save()
+
+
+
 class Comment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
@@ -154,7 +157,6 @@ class Comment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def clean(self):
-        #Validacion: Titulo y contenido no pueden estar vacios
         if not self.title.strip():
             raise ValidationError("El titulo del comentario no puede estar vacio....")
         if not self.content.strip():
@@ -163,6 +165,8 @@ class Comment(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.event.title}"
 
+
+
 class Ticket(models.Model):
     GENERAL = 'GENERAL'
     VIP = 'VIP'
@@ -170,26 +174,14 @@ class Ticket(models.Model):
         (GENERAL, 'General'),
         (VIP, 'VIP'),
     ]
-
-    # Relación con User
-    user = models.ForeignKey(
-        'User',
-        on_delete=models.CASCADE, #Si borro el User también se van a borrar los tickets asociados
-        related_name='tickets' #Permite el uso de user.tickets.all() para obtener todos los tickets de un usuario
-    )
-    
-    # Relación con Event
-    event = models.ForeignKey(
-        'Event',
-        on_delete=models.CASCADE, #Si borro el evento, se van a borrar los tickets asociados
-        related_name='tickets'
-    )
-    
-    #Atributos de Ticket
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tickets')
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='tickets')
     buy_date = models.DateField(auto_now_add=True)
     ticket_code = models.CharField(max_length=50, unique=True, editable=False)
     quantity = models.PositiveIntegerField(default=1)
     type = models.CharField(max_length=10, choices=TYPE_CHOICES, default=GENERAL)
+    price_paid = models.DecimalField(max_digits=10, decimal_places=2) 
+    used = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if not self.ticket_code:
@@ -203,17 +195,7 @@ class Ticket(models.Model):
     def __str__(self):
         return f"{self.ticket_code} - {self.type}"
 
-class Ticket(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tickets")
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="tickets")
-    code = models.CharField(max_length=20, unique=True)
-    used = models.BooleanField(default=False)
-    purchase_date = models.DateTimeField(auto_now_add=True)
-    # Campo requerido para los cálculos
-    price_paid = models.DecimalField(max_digits=10, decimal_places=2)  
 
-    def __str__(self):
-        return f"Ticket {self.code}"
 
 class RefundRequest(models.Model):
     STATUS_CHOICES = [
@@ -222,7 +204,6 @@ class RefundRequest(models.Model):
         ('rejected', '❌ Rechazado'),
         ('refunded', '💰 Reembolsado')
     ]
-    
     id = models.AutoField(primary_key=True, verbose_name="ID")
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="refunds")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -232,10 +213,7 @@ class RefundRequest(models.Model):
     refund_date = models.DateTimeField(null=True, blank=True)
     percentage = models.IntegerField(default=0)
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    policy_30_days = models.BooleanField(
-        default=False,
-        verbose_name="Extensión de 30 días (Premium)"
-    )
+    policy_30_days = models.BooleanField( default=False, verbose_name="Extensión de 30 días (Premium)")
 
     def __str__(self):
         return f"Reembolso #{self.id}"  

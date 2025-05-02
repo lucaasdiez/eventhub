@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Comentarios{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Comentarios</h1>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Evento</th>
+                    <th>Usuario</th>
+                    <th>Comentario</th>
+                    <th>Fecha</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for comentario in comentarios %}
+                <tr>
+                    <td>
+                        <a href="{% url 'event_detail' comentario.event.id %}" 
+                           class="text-primary text-decoration-none">
+                            {{ comentario.event.title }}
+                        </a>
+                    </td>
+                    <td>{{ comentario.user.username }}</td>
+                    <td>{{ comentario.content|truncatechars:50 }}</td>
+                    <td>{{ comentario.created_at|date:"d M Y, H:i" }}</td>
+                    <td>
+                        <div class="hstack gap-2">
+                            <a href="{% url 'event_detail' comentario.event.id %}"
+                               class="btn btn-sm btn-outline-primary"
+                               title="Ver detalle">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            
+                            <form method="POST" 
+                                  action="{% url 'eliminar_comentario' comentario.id %}" 
+                                  class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" 
+                                        class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('¿Eliminar este comentario permanentemente?')"
+                                        title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-4">
+                        <div class="alert alert-info">
+                            No hay comentarios para mostrar
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock %}

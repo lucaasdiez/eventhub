@@ -10,7 +10,7 @@
                 </div>
                 <div class="card-body">
                     <!-- Mensajes de Django -->
-                    {% include 'partials/messages.html' %}
+                    {% include 'app/partials/messages.html' %}
                     
                     {% if form.errors %}
                     <div class="alert alert-danger">
@@ -28,11 +28,15 @@
                     
                     <form method="post">
                         {% csrf_token %}
-                        
-                        <!-- Código del ticket -->
                         <div class="mb-3">
                             <label class="form-label">Código de Ticket:</label>
-                            <input type="text" class="form-control" value="{{ ticket.code }}" readonly>
+                            <input type="text" 
+                                class="form-control" 
+                                name="ticket_code"
+                                pattern="[A-Za-z]{3}-[0-9]{4}" 
+                                title="Formato: XXX-0000"
+                                required>
+                            <small class="form-text text-muted">Ejemplo: VIP-0123 o GEN-0456</small>
                         </div>
 
                         <!-- Motivo del reembolso como select -->
@@ -65,7 +69,7 @@
                         <!-- Botones -->
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <button type="submit" class="btn btn-success me-md-2">Enviar Solicitud</button>
-                            <a href="{% url 'event_detail' id=ticket.event.id %}" class="btn btn-secondary">↩️ Volver</a>
+                            <a href="{% url 'ticket_list' %}" class="btn btn-secondary">↩️ Volver a Mis Tickets</a>
                         </div>
                     </form>
                 </div>

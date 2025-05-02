@@ -25,7 +25,7 @@
     
     <div class="row mt-4">
         <div class="card">
-            <a href="#" class="btn btn-primary">
+            <a href="{% url 'ticket_form' %}" class="btn btn-primary">
                 <i class="bi bi-ticket-perforated me-1"></i> Comprar Entrada
             </a>
         </div>
@@ -68,15 +68,7 @@
                         </div>
                     </div>
                     
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="bg-light rounded-circle p-2 me-3">
-                            <i class="bi bi-geo-alt text-primary fs-5"></i>
-                        </div>
-                        <div>
-                            <h6 class="mb-0">Ubicación</h6>
-                            <p class="mb-0">{{ event.location }}</p>
-                        </div>
-                    </div>
+
                     <div class="d-flex align-items-center mb-3">
                         <div class="bg-light rounded-circle p-2 me-3">
                             <i class="bi bi-person text-primary fs-5"></i>
@@ -86,15 +78,24 @@
                             <p class="mb-0">{{ event.organizer }}</p>
                         </div>
                     </div>
+
                     <div class="d-flex align-items-center">
                         <div class="bg-light rounded-circle p-2 me-3">
                             <i class="bi bi-tags text-primary fs-5"></i>
                         </div>
                         <div>
                             <h6 class="mb-0">Categorías</h6>
-                            <p class="mb-0">{{ event.categories }}</p>
+                            <p class="mb-0">
+                                {% for category in event.categories.all %}
+                                    <span class="badge bg-secondary">{{ category.name }}</span>
+                                {% empty %}
+                                    Sin categorías
+                                {% endfor %}
+                            </p>
                         </div>
                     </div>
+
+                    
                 </div>
             </div>
         </div>

@@ -1,30 +1,18 @@
-from .forms import EventForm
-from .models import Event, User
-from .models import Event, User, Venue
-from .forms import CommentForm
-from .models import Comment, Event
-from .forms import CategoryForm
-from .models import Category
-from django.views import generic
-from django.urls import reverse_lazy
-from django.contrib import messages
-from django.shortcuts import render, redirect, get_object_or_404
 import datetime
+from datetime import timedelta
 
+from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
-from django.urls import reverse_lazy
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views import generic
+from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
-from .models import Event, User, Ticket
-from django.contrib import messages
-from datetime import timedelta 
-
-from .models import RefundRequest, Ticket, Event, User
-from .forms import RefundRequestForm
+from .forms import CategoryForm, CommentForm, EventForm, RefundRequestForm
+from .models import Category, Comment, Event, RefundRequest, Ticket, User, Venue
 
 
 def register(request):
@@ -54,7 +42,7 @@ def register(request):
             login(request, user)
             return redirect("home")
 
-    return render(request, "accounts/register.html", {})
+    return render(request, "app/accounts/register.html", {})
 
 
 def login_view(request):
@@ -66,14 +54,14 @@ def login_view(request):
 
         if user is None:
             return render(
-                request, "accounts/login.html", {
+                request, "app/accounts/login.html", {
                     "error": "Usuario o contraseña incorrectos"}
             )
 
         login(request, user)
         return redirect("home")
 
-    return render(request, "accounts/login.html")
+    return render(request, "app/accounts/login.html")
 
 
 def home(request):
@@ -94,7 +82,7 @@ def events(request):
     queryset = Event.objects.all().order_by("scheduled_at")
     if not request.user.is_organizer:
         queryset = queryset.filter(scheduled_at__gte=timezone.now())
-    return render(request, "app/events.html", {"events": queryset})
+    return render(request, "app/event/events.html", {"events": queryset})
 
 
 @login_required
@@ -114,7 +102,7 @@ def event_detail(request, id):
     else:
         form = CommentForm()
 
-    return render(request, 'app/event_detail.html', {
+    return render(request, 'app/event/event_detail.html', {
         'event': event,
         'comments': comments,
         'form': form,
@@ -122,38 +110,40 @@ def event_detail(request, id):
 
 
 @login_required
-def event_delete(request, pk):
+def event_delete(request, id):
     if not request.user.is_organizer:
         messages.error(request, "No tienes permisos")
         return redirect("events")
 
-    event = get_object_or_404(Event, pk=pk)
+    event = get_object_or_404(Event, pk=id)
     if request.method == "POST":
         event.delete()
         messages.success(request, "Evento eliminado")
         return redirect("events")
 
-    return render(request, "app/event_confirm_delete.html", {"event": event})
+    return render(request, "app/event/event_confirm_delete.html", {"event": event})
 
 
 @login_required
-def event_form(request, pk=None):
-    event = get_object_or_404(Event, pk=pk) if pk else None
+def event_form(request, id=None):
+    event = get_object_or_404(Event, pk=id) if id else None
+    all_categories = Category.objects.all()
     if request.method == 'POST':
         form = EventForm(request.POST, instance=event, user=request.user)
-        scheduled_at = timezone.make_aware(
-            datetime.datetime(int(year), int(month), int(
-                day), int(hour), int(minutes))
-        )
         if form.is_valid():
             event = form.save(commit=False)
             event.organizer = request.user
             event.save()
-            return redirect('event_detail', pk=event.pk)
+            form.save_m2m()  
+            return redirect('event_detail', id=event.id)
     else:
         form = EventForm(instance=event, user=request.user)
 
-    return render(request, 'app/event_form.html', {'form': form})
+    return render(request, 'app/event/event_form.html', {
+        'form': form,
+        'categories': all_categories, 
+        'event': event
+        })
 
 
 @login_required
@@ -161,7 +151,7 @@ def venue_list(request):
     if not request.user.is_organizer:
         return redirect('events')
     venues = Venue.objects.filter(created_by=request.user)
-    return render(request, 'app/venue_list.html', {
+    return render(request, 'app/venue/venue_list.html', {
         'venues': venues,
         'user_is_organizer': request.user.is_organizer
     })
@@ -208,7 +198,7 @@ def venue_form(request, id=None):
     if id:
         venue = get_object_or_404(Venue, pk=id)
 
-    return render(request, 'app/venue_form.html', {'venue': venue})
+    return render(request, 'app/venue/venue_form.html', {'venue': venue})
 
 
 @login_required
@@ -219,22 +209,12 @@ def venue_delete(request, id):
     venue = get_object_or_404(Venue, pk=id)
     if request.method == 'POST':
         venue.delete()
-    return redirect('venue_list')
-    return render(
-        request,
-        "app/event_form.html",
-        {"event": event, "user_is_organizer": request.user.is_organizer},
-    )
-
-
-# Listar Categorias
+    return redirect('app/venue/venue_list')
 
 
 class CategoryListView(generic.ListView):
     model = Category
     template_name = 'app/category/category_list.html'
-
-# Crear categoria
 
 
 class CategoryCreateView(generic.CreateView):
@@ -243,16 +223,11 @@ class CategoryCreateView(generic.CreateView):
     template_name = 'app/category/category_form.html'
     success_url = reverse_lazy('category_list')
 
-# Modificar categoría
-
-
 class CategoryUpdateView(generic.UpdateView):
     model = Category
     form_class = CategoryForm
     template_name = 'app/category/category_form.html'
     success_url = reverse_lazy('category_list')
-
-# Borrar categoría
 
 
 class CategoryDeleteView(generic.DeleteView):
@@ -267,7 +242,7 @@ def comentarios_organizador(request):
     comentarios = Comment.objects.filter(
         event__organizer=request.user).select_related('event', 'user')
 
-    return render(request, 'app/comentarios_organizador.html', {
+    return render(request, 'app/comments/comentarios_organizador.html', {
         'comentarios': comentarios
     })
 
@@ -281,7 +256,7 @@ def eliminar_comentario(request, comentario_id):
     return redirect('comentarios_organizador')
 class TicketListView(ListView):
     model = Ticket
-    template_name = 'tickets/ticket_list.html'
+    template_name = 'app/tickets/ticket_list.html'
     context_object_name = 'tickets'
     
     def get_queryset(self):
@@ -292,34 +267,40 @@ class TicketListView(ListView):
             return qs.filter(event__organizer=user)
 
         return qs.filter(user=user)
-        #qs = super().get_queryset()
-        #if (User.is_organizer): # type: ignore
-        #    return qs.filter(event__organizer=self.request.user)
-        #return qs.filter(user=self.request.user)
-
-    #def get_queryset(self):
-    #    return Ticket.objects.filter(user=self.request.user) #Aplico filtro para que el usuario solo vea sus tickets
 
 
 class TicketCreateView(LoginRequiredMixin, CreateView):
     model = Ticket
-    template_name = 'tickets/ticket_form.html'
-    fields = ['event', 'quantity', 'type'] 
+    template_name = 'app/tickets/ticket_form.html'
+    fields = ['event', 'quantity', 'type']
     success_url = reverse_lazy('ticket_list')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['precio_base_general'] = 50.00  # Precio hardcodeado
+        context['precio_base_vip'] = 100.00     # Precio hardcodeado
+        return context
+
     def form_valid(self, form):
-        form.instance.user = self.request.user  #Asigna el usuario actual
+        # Calcular precio según el tipo
+        if form.cleaned_data['type'] == 'VIP':
+            precio_unitario = 100.00
+        else:
+            precio_unitario = 50.00
+
+        form.instance.user = self.request.user
+        form.instance.price_paid = precio_unitario * form.cleaned_data['quantity']
         return super().form_valid(form)
 
 class TicketUpdateView(LoginRequiredMixin, UpdateView):
     model = Ticket
-    template_name = 'tickets/ticket_form.html'
+    template_name = 'app/tickets/ticket_form.html'
     fields = ['event', 'quantity', 'type']
     success_url = reverse_lazy('ticket_list')
 
 class TicketDeleteView(LoginRequiredMixin, DeleteView):
     model = Ticket
-    template_name = 'tickets/ticket_confirm_delete.html'
+    template_name = 'app/tickets/ticket_confirm_delete.html'
     success_url = reverse_lazy('ticket_list')
 
 
@@ -328,7 +309,6 @@ def update_refund_status(request, refund_id, action):
     """Unifica aprobación y rechazo en una sola vista"""
     refund = get_object_or_404(RefundRequest, id=refund_id)
     
-    # Verificación de doble seguridad
     is_organizer = request.user.is_organizer
     is_own_event = refund.ticket.event.organizer == request.user
     
@@ -349,83 +329,79 @@ def update_refund_status(request, refund_id, action):
     
     return redirect('manage_refunds')
 
-# Versión mejorada de manage_refunds
+
 @login_required
 def manage_refunds(request):
     if not request.user.is_organizer:
         return redirect('home')
     
-    # Consulta BASE (todas las solicitudes del organizador)
+
     base_refunds = RefundRequest.objects.filter(
         ticket__event__organizer=request.user
     ).select_related('ticket__event', 'user')
     
-    # Calcular conteos ANTES de filtrar por estado
     status_counts = {
         'pending': base_refunds.filter(status='pending').count(),
         'approved': base_refunds.filter(status='approved').count(),
         'rejected': base_refunds.filter(status='rejected').count(),
     }
     
-    # Aplicar filtro de estado (si existe)
     status_filter = request.GET.get('status')
     if status_filter in ['approved', 'rejected', 'pending']:
         refunds = base_refunds.filter(status=status_filter)
     else:
         refunds = base_refunds
     
-    return render(request, 'refunds/manage.html', {
+    return render(request, 'app/refunds/manage.html', {
         'refunds': refunds,
         'status_counts': status_counts,
     })
 
-# Versión segura de refund_detail
+
 @login_required
 def refund_detail(request, refund_id):
-    """Incluye validación de permisos"""
     refund = get_object_or_404(RefundRequest, id=refund_id)
     
-    # Verifica si el usuario es dueño u organizador
+
     if not (request.user == refund.user or request.user.is_organizer):
         return redirect('home')
     
-    return render(request, 'refunds/detail.html', {
+    return render(request, 'app/refunds/detail.html', {
         'refund': refund,
         'can_edit': request.user.is_organizer
     })
 
 @login_required
-def request_refund(request, ticket_id):
-    """
-    Vista para que usuarios regulares soliciten reembolsos
-    """
-    ticket = get_object_or_404(Ticket, id=ticket_id, user=request.user)
-    
-    # Validación de tiempo restante
-    tiempo_restante = ticket.event.scheduled_at - timezone.now()
-    if tiempo_restante < timedelta(hours=48):
-        messages.error(request, "⚠️ No se permiten reembolsos a menos de 48 horas del evento")
-        return redirect('event_detail', id=ticket.event.id)
-
+def request_refund(request):
     if request.method == 'POST':
+        ticket_code = request.POST.get('ticket_code')
+        try:
+            ticket = Ticket.objects.get(
+                ticket_code=ticket_code,
+                user=request.user
+            )
+        except Ticket.DoesNotExist:
+            messages.error(request, "❌ Ticket no encontrado o no pertenece a tu cuenta")
+            return redirect('request_refund')
+        
+        tiempo_restante = ticket.event.scheduled_at - timezone.now()
+        if tiempo_restante < timedelta(hours=48):
+            messages.error(request, "⚠️ No se permiten reembolsos a menos de 48 horas del evento")
+            return redirect('request_refund')
+
         form = RefundRequestForm(request.POST)
         if form.is_valid():
-            # Crear reembolso
             refund = form.save(commit=False)
             refund.ticket = ticket
             refund.user = request.user
-            
-            # Calcular monto automáticamente
-            refund.calcular_monto()  # Usando el método del modelo
+            refund.calcular_monto()
             refund.save()
-            
             messages.success(request, "✅ Solicitud creada exitosamente")
-            return redirect('refund_detail', refund_id=refund.id)
+            return redirect('manage_refunds')
     else:
         form = RefundRequestForm()
 
-    return render(request, 'refunds/request.html', {
-    'form': form,
-    'ticket': ticket,
-    'policy_message': "Puedes solicitar reembolsos hasta 48 horas antes del evento."
-})
+    return render(request, 'app/refunds/request.html', {
+        'form': form,
+        'policy_message': "Puedes solicitar reembolsos hasta 48 horas antes del evento."
+    })

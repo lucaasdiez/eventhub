@@ -1,40 +1,49 @@
-from .models import Comment
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Event, Venue
-from .models import Category
+
+from .models import Category, Comment, Event, RefundRequest, Venue
 
 
 class EventForm(forms.ModelForm):
+    categories = forms.ModelMultipleChoiceField(
+        queryset=Category.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False
+    )
     class Meta:
         model = Event
-        fields = ['title', 'description', 'scheduled_at', 'venue']
+        fields = ['title', 'description', 'scheduled_at', 'venue', 'categories', 'premium' ]
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
-            'scheduled_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
+            'scheduled_at': forms.DateTimeInput(
+                attrs={
+                    'type': 'datetime-local',
+                    'class': 'form-control'
+                },
+                format='%Y-%m-%dT%H:%M'
+            ),
+            'categories': forms.SelectMultiple(attrs={'class': 'form-select'}),
             'venue': forms.Select(attrs={'class': 'form-select'})
         }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        self.fields['scheduled_at'].input_formats = ['%Y-%m-%dT%H:%M'] # type: ignore
         if self.user:
-            self.fields['venue'].queryset = Venue.objects.filter(
-                created_by=self.user)
+            self.fields['venue'].queryset = Venue.objects.filter(created_by=self.user) # type: ignore
 
     def clean_title(self):
         title = self.cleaned_data.get('title')
-        if len(title.strip()) < 5:
-            raise ValidationError(
-                "El título debe tener al menos 5 caracteres.")
+        if len(title.strip()) < 5: # type: ignore
+            raise ValidationError("El título debe tener al menos 5 caracteres.")
         return title
 
     def clean_description(self):
         description = self.cleaned_data.get('description')
-        if len(description.strip()) < 20:
-            raise ValidationError(
-                "La descripción debe tener al menos 20 caracteres.")
+        if len(description.strip()) < 20: # type: ignore
+            raise ValidationError("La descripción debe tener al menos 20 caracteres.")
         return description
 
     def clean_scheduled_at(self):
@@ -42,8 +51,7 @@ class EventForm(forms.ModelForm):
         if scheduled_at and scheduled_at < timezone.now():
             raise ValidationError("La fecha/hora debe ser futura.")
         return scheduled_at
-
-
+    
 class CategoryForm(forms.ModelForm):
     class Meta:
         model = Category
@@ -65,8 +73,6 @@ class CommentForm (forms.ModelForm):
             'title': forms.TextInput(attrs={'placeholder': 'Titulo del comentario...'}),
             'content': forms.Textarea(attrs={'placeholder': 'Escribe tu comentario...'}),
         }
-from django import forms
-from .models import RefundRequest
 
 class RefundRequestForm(forms.ModelForm):
     accept_policy = forms.BooleanField(

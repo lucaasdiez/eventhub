@@ -12,10 +12,10 @@
             {% if user_is_organizer %}
             <a href="{% url 'venue_list' %}" class="boton">Venues</a>
             {% endif %}
-            <a href="/tickets" class="boton">Tickets</a>
-            <a href="{% url 'comentarios_organizador' %}" class="boton">Comentarios</a>
-            <a href="/categorias" class="boton">Categorías</a>
-            <a href="/reembolsos" class="boton">Reembolsos</a>
+            <a href="{% url 'ticket_list' %}" class="boton">Tickets</a>
+            <a href="{% url 'category_list' %}" class="boton">Categorías</a>
+            <a href="{% url 'comentarios_organizador' %}"class="boton">Comentarios</a>
+            <a href="{% url 'manage_refunds' %}" class="boton">Reembolsos</a>
         </div>
     </div>
 </div>
