@@ -27,15 +27,15 @@
                         </h3>
                         <ul class="list-unstyled">
                             <li><i class="bi bi-calendar-event"></i> 
-                                {% if event.date %}
-                                    {{ event.date|date:"d/m/Y H:i" }}
+                                {% if event.scheduled_at %} 
+                                    {{ event.scheduled_at|date:"d/m/Y H:i" }}
                                 {% else %}
                                     -
                                 {% endif %}
                             </li>
                             <li><i class="bi bi-geo-alt"></i> 
-                                {% if ticket.event.venue.address %}
-                                    {{ ticket.event.venue.address }}
+                                {% if event.venue and event.venue.address %}
+                                    {{ event.venue.address }}
                                 {% else %}
                                     -
                                 {% endif %}

@@ -11,9 +11,9 @@
             <a href="{% url 'events' %}" class="boton">Eventos</a>
             {% if user_is_organizer %}
             <a href="{% url 'venue_list' %}" class="boton">Venues</a>
+            <a href="{% url 'category_list' %}" class="boton">Categorías</a>
             {% endif %}
             <a href="{% url 'ticket_list' %}" class="boton">Tickets</a>
-            <a href="{% url 'category_list' %}" class="boton">Categorías</a>
             <a href="{% url 'comentarios_organizador' %}"class="boton">Comentarios</a>
             <a href="{% url 'manage_refunds' %}" class="boton">Reembolsos</a>
         </div>
