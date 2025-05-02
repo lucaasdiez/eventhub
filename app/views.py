@@ -133,9 +133,22 @@ class TicketListView(ListView):
     model = Ticket
     template_name = 'tickets/ticket_list.html'
     context_object_name = 'tickets'
-
+    
     def get_queryset(self):
-        return Ticket.objects.filter(user=self.request.user) #Aplico filtro para que el usuario solo vea sus tickets
+        qs = super().get_queryset()
+        user = self.request.user
+
+        if getattr(user, "is_organizer", False):
+            return qs.filter(event__organizer=user)
+
+        return qs.filter(user=user)
+        #qs = super().get_queryset()
+        #if (User.is_organizer): # type: ignore
+        #    return qs.filter(event__organizer=self.request.user)
+        #return qs.filter(user=self.request.user)
+
+    #def get_queryset(self):
+    #    return Ticket.objects.filter(user=self.request.user) #Aplico filtro para que el usuario solo vea sus tickets
 
 
 class TicketCreateView(LoginRequiredMixin, CreateView):
@@ -158,3 +171,5 @@ class TicketDeleteView(LoginRequiredMixin, DeleteView):
     model = Ticket
     template_name = 'tickets/ticket_confirm_delete.html'
     success_url = reverse_lazy('ticket_list')
+
+
