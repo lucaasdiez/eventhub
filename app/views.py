@@ -1,21 +1,20 @@
+from .forms import EventForm
+from .models import Event, User
+from .models import Event, User, Venue
+from .forms import CommentForm
+from .models import Comment, Event
+from .forms import CategoryForm
+from .models import Category
+from django.views import generic
+from django.urls import reverse_lazy
+from django.contrib import messages
+from django.shortcuts import render, redirect, get_object_or_404
 import datetime
 
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-<<<<<<< HEAD
-from django.contrib import messages
-=======
-from django.urls import reverse_lazy
-from django.views import generic
-from .models import Category
-from .forms import CategoryForm
->>>>>>> category-branch
-
-from .models import Event, User, Venue
-from .forms import EventForm  
-from .models import Event, User
 
 
 def register(request):
@@ -26,7 +25,8 @@ def register(request):
         password = request.POST.get("password")
         password_confirm = request.POST.get("password-confirm")
 
-        errors = User.validate_new_user(email, username, password, password_confirm)
+        errors = User.validate_new_user(
+            email, username, password, password_confirm)
 
         if len(errors) > 0:
             return render(
@@ -56,7 +56,8 @@ def login_view(request):
 
         if user is None:
             return render(
-                request, "accounts/login.html", {"error": "Usuario o contraseña incorrectos"}
+                request, "accounts/login.html", {
+                    "error": "Usuario o contraseña incorrectos"}
             )
 
         login(request, user)
@@ -78,7 +79,6 @@ def home(request):
     return render(request, "home.html", context)
 
 
-
 @login_required
 def events(request):
     queryset = Event.objects.all().order_by("scheduled_at")
@@ -86,11 +86,29 @@ def events(request):
         queryset = queryset.filter(scheduled_at__gte=timezone.now())
     return render(request, "app/events.html", {"events": queryset})
 
-@login_required
-def event_detail(request, pk):
-    event = get_object_or_404(Event.objects.select_related('venue'), pk=pk)
-    return render(request, "app/event_detail.html", {"event": event})
 
+@login_required
+def event_detail(request, id):
+    event = get_object_or_404(Event, pk=id)
+    comments = Comment.objects.filter(event=event).order_by('-created_at')
+
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.event = event
+            comment.user = request.user
+            comment.save()
+            # redirige luego de guardar
+            return redirect('event_detail', id=event.id)
+    else:
+        form = CommentForm()
+
+    return render(request, 'app/event_detail.html', {
+        'event': event,
+        'comments': comments,
+        'form': form,
+    })
 
 
 @login_required
@@ -113,6 +131,10 @@ def event_form(request, pk=None):
     event = get_object_or_404(Event, pk=pk) if pk else None
     if request.method == 'POST':
         form = EventForm(request.POST, instance=event, user=request.user)
+        scheduled_at = timezone.make_aware(
+            datetime.datetime(int(year), int(month), int(
+                day), int(hour), int(minutes))
+        )
         if form.is_valid():
             event = form.save(commit=False)
             event.organizer = request.user
@@ -120,9 +142,8 @@ def event_form(request, pk=None):
             return redirect('event_detail', pk=event.pk)
     else:
         form = EventForm(instance=event, user=request.user)
-    
-    return render(request, 'app/event_form.html', {'form': form})
 
+    return render(request, 'app/event_form.html', {'form': form})
 
 
 @login_required
@@ -133,12 +154,12 @@ def venue_list(request):
     return render(request, 'app/venue_list.html', {
         'venues': venues,
         'user_is_organizer': request.user.is_organizer
-        })
+    })
+
 
 def venue_form(request, id=None):
     if not request.user.is_organizer:
         return redirect('events')
-
     if request.method == 'POST':
         name = request.POST.get('name')
         address = request.POST.get('address')
@@ -176,14 +197,15 @@ def venue_form(request, id=None):
     venue = {}
     if id:
         venue = get_object_or_404(Venue, pk=id)
-    
+
     return render(request, 'app/venue_form.html', {'venue': venue})
+
 
 @login_required
 def venue_delete(request, id):
     if not request.user.is_organizer:
         return redirect('events')
-    
+
     venue = get_object_or_404(Venue, pk=id)
     if request.method == 'POST':
         venue.delete()
@@ -195,12 +217,16 @@ def venue_delete(request, id):
     )
 
 
-#Listar Categorias
+# Listar Categorias
+
+
 class CategoryListView(generic.ListView):
     model = Category
     template_name = 'app/category/category_list.html'
 
-#Crear categoria
+# Crear categoria
+
+
 class CategoryCreateView(generic.CreateView):
     model = Category
     form_class = CategoryForm
@@ -208,6 +234,8 @@ class CategoryCreateView(generic.CreateView):
     success_url = reverse_lazy('category_list')
 
 # Modificar categoría
+
+
 class CategoryUpdateView(generic.UpdateView):
     model = Category
     form_class = CategoryForm
@@ -215,7 +243,29 @@ class CategoryUpdateView(generic.UpdateView):
     success_url = reverse_lazy('category_list')
 
 # Borrar categoría
+
+
 class CategoryDeleteView(generic.DeleteView):
     model = Category
     template_name = 'app/category/category_confirm_delete.html'
     success_url = reverse_lazy('category_list')
+
+
+@login_required
+def comentarios_organizador(request):
+    # Comentarios solo de eventos que creó el organizador actual
+    comentarios = Comment.objects.filter(
+        event__organizer=request.user).select_related('event', 'user')
+
+    return render(request, 'app/comentarios_organizador.html', {
+        'comentarios': comentarios
+    })
+
+
+@login_required
+def eliminar_comentario(request, comentario_id):
+    comentario = get_object_or_404(
+        Comment, id=comentario_id, event__organizer=request.user
+    )
+    comentario.delete()
+    return redirect('comentarios_organizador')

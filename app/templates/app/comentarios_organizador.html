@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4 fw-bold">Comentarios</h2>
+
+<table class="table table-hover align-middle">
+    <thead class="table-light">
+        <tr>
+            <th>Evento</th>
+            <th>Usuario</th>
+            <th>Comentario</th>
+            <th>Fecha</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for comentario in comentarios %}
+        <tr>
+            <td>
+                <a href="{% url 'event_detail' comentario.event.id %}" class="text-primary text-decoration-none">
+                    {{ comentario.event.title }}
+                </a>
+            </td>
+            <td>{{ comentario.user.username}}</td>
+            <td>{{ comentario.content|truncatechars:40 }}</td>
+            <td>{{ comentario.created_at|date:"d M Y, H:i" }}</td>
+            <td>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'event_detail' comentario.event.id %}" class="btn btn-outline-primary btn-sm" title="Ver">
+                        👁️
+                    </a>
+                    <form method="POST" action="{% url 'eliminar_comentario' comentario.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                    </form>
+                    
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" class="text-center text-muted">No hay comentarios para tus eventos.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,8 +1,10 @@
+from .models import Comment
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import Event, Venue
 from .models import Category
+
 
 class EventForm(forms.ModelForm):
     class Meta:
@@ -18,18 +20,21 @@ class EventForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         if self.user:
-            self.fields['venue'].queryset = Venue.objects.filter(created_by=self.user)
+            self.fields['venue'].queryset = Venue.objects.filter(
+                created_by=self.user)
 
     def clean_title(self):
         title = self.cleaned_data.get('title')
-        if len(title.strip()) < 5: 
-            raise ValidationError("El título debe tener al menos 5 caracteres.")
+        if len(title.strip()) < 5:
+            raise ValidationError(
+                "El título debe tener al menos 5 caracteres.")
         return title
 
     def clean_description(self):
         description = self.cleaned_data.get('description')
         if len(description.strip()) < 20:
-            raise ValidationError("La descripción debe tener al menos 20 caracteres.")
+            raise ValidationError(
+                "La descripción debe tener al menos 20 caracteres.")
         return description
 
     def clean_scheduled_at(self):
@@ -50,3 +55,13 @@ class CategoryForm(forms.ModelForm):
             raise forms.ValidationError("El nombre es obligatorio.")
         # Puedes agregar más validaciones si es necesario
         return name
+
+
+class CommentForm (forms.ModelForm):
+    class Meta:
+        model = Comment
+        fields = ['title', 'content']
+        widgets = {
+            'title': forms.TextInput(attrs={'placeholder': 'Titulo del comentario...'}),
+            'content': forms.Textarea(attrs={'placeholder': 'Escribe tu comentario...'}),
+        }
