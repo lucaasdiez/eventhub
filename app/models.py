@@ -98,9 +98,18 @@ class Ticket(models.Model):
     
     #Atributos de Ticket
     buy_date = models.DateField(auto_now_add=True)
-    ticket_code = models.CharField(max_length=50, unique=True)
+    ticket_code = models.CharField(max_length=50, unique=True, editable=False)
     quantity = models.PositiveIntegerField(default=1)
     type = models.CharField(max_length=10, choices=TYPE_CHOICES, default=GENERAL)
+
+    def save(self, *args, **kwargs):
+        if not self.ticket_code:
+            prefix = 'VIP' if self.type == self.VIP else 'GEN'
+            super().save(*args, **kwargs)
+            self.ticket_code = f"{prefix}-{self.pk:04d}"
+            super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.ticket_code} - {self.type}"

@@ -134,11 +134,14 @@ class TicketListView(ListView):
     template_name = 'tickets/ticket_list.html'
     context_object_name = 'tickets'
 
+    def get_queryset(self):
+        return Ticket.objects.filter(user=self.request.user) #Aplico filtro para que el usuario solo vea sus tickets
+
 
 class TicketCreateView(LoginRequiredMixin, CreateView):
     model = Ticket
     template_name = 'tickets/ticket_form.html'
-    fields = ['event', 'ticket_code', 'quantity', 'type'] 
+    fields = ['event', 'quantity', 'type'] 
     success_url = reverse_lazy('ticket_list')
 
     def form_valid(self, form):
@@ -148,7 +151,7 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
 class TicketUpdateView(LoginRequiredMixin, UpdateView):
     model = Ticket
     template_name = 'tickets/ticket_form.html'
-    fields = ['event','ticket_code', 'quantity', 'type']
+    fields = ['event', 'quantity', 'type']
     success_url = reverse_lazy('ticket_list')
 
 class TicketDeleteView(LoginRequiredMixin, DeleteView):
