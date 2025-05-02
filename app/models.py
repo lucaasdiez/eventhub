@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-
+from django.utils import timezone
 
 class User(AbstractUser):
     is_organizer = models.BooleanField(default=False)
@@ -28,10 +28,13 @@ class User(AbstractUser):
 
 
 class Event(models.Model):
-    title = models.CharField(max_length=200, blank=False) #blank = false, atributo requerido en la creacion
-    description = models.TextField(blank=False)
-    scheduled_at = models.DateTimeField(blank=False)
-    organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="organized_events", blank=False)
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    scheduled_at = models.DateTimeField()  
+    total_rating = models.IntegerField(default=0)
+    organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="organized_events")
+    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, blank=True)
+    venue = models.ForeignKey('Venue', on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -134,3 +137,4 @@ class Venue(models.Model):
 
 
 
+  

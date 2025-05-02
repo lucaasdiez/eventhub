@@ -1,0 +1,38 @@
+from django import forms
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from .models import Event, Venue
+
+class EventForm(forms.ModelForm):
+    class Meta:
+        model = Event
+        fields = ['title', 'description', 'scheduled_at', 'venue']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'scheduled_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
+            'venue': forms.Select(attrs={'class': 'form-select'})
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if self.user:
+            self.fields['venue'].queryset = Venue.objects.filter(created_by=self.user)
+
+    def clean_title(self):
+        title = self.cleaned_data.get('title')
+        if len(title.strip()) < 5: 
+            raise ValidationError("El título debe tener al menos 5 caracteres.")
+        return title
+
+    def clean_description(self):
+        description = self.cleaned_data.get('description')
+        if len(description.strip()) < 20:
+            raise ValidationError("La descripción debe tener al menos 20 caracteres.")
+        return description
+
+    def clean_scheduled_at(self):
+        scheduled_at = self.cleaned_data.get('scheduled_at')
+        if scheduled_at and scheduled_at < timezone.now():
+            raise ValidationError("La fecha/hora debe ser futura.")
+        return scheduled_at
