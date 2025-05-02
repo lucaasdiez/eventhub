@@ -1,10 +1,11 @@
 import datetime
+
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .models import Event, User
+from .models import Event, User, Venue
 
 
 def register(request):
@@ -31,7 +32,7 @@ def register(request):
                 email=email, username=username, password=password, is_organizer=is_organizer
             )
             login(request, user)
-            return redirect("events")
+            return redirect("home")
 
     return render(request, "accounts/register.html", {})
 
@@ -49,13 +50,22 @@ def login_view(request):
             )
 
         login(request, user)
-        return redirect("events")
+        return redirect("home")
 
     return render(request, "accounts/login.html")
 
 
 def home(request):
-    return render(request, "home.html")
+    user = request.user
+
+    user_is_organizer = False
+    if user.is_authenticated:
+        user_is_organizer = user.is_organizer
+
+    context = {
+        "user_is_organizer": user_is_organizer,
+    }
+    return render(request, "home.html", context)
 
 
 @login_required
@@ -125,3 +135,68 @@ def event_form(request, id=None):
         "app/event_form.html",
         {"event": event, "user_is_organizer": request.user.is_organizer},
     )
+
+
+@login_required
+def venue_list(request):
+    if not request.user.is_organizer:
+        return redirect('events')
+    venues = Venue.objects.filter(created_by=request.user)
+    return render(request, 'app/venue_list.html', {
+        'venues': venues,
+        'user_is_organizer': request.user.is_organizer
+        })
+
+def venue_form(request, id=None):
+    if not request.user.is_organizer:
+        return redirect('events')
+
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        address = request.POST.get('address')
+        city = request.POST.get('city')
+        capacity = request.POST.get('capacity')
+        contact_info = request.POST.get('contact_info')
+
+        if id:
+            venue = get_object_or_404(Venue, pk=id)
+            venue.update(
+                name=name,
+                address=address,
+                city=city,
+                capacity=capacity,
+                contact_info=contact_info
+            )
+        else:
+            success, errors = Venue.new(
+                name=name,
+                address=address,
+                city=city,
+                capacity=capacity,
+                contact_info=contact_info,
+                created_by=request.user
+            )
+
+            if not success:
+                return render(request, 'app/venue_form.html', {
+                    'errors': errors,
+                    'venue_data': request.POST
+                })
+
+        return redirect('venue_list')
+
+    venue = {}
+    if id:
+        venue = get_object_or_404(Venue, pk=id)
+    
+    return render(request, 'app/venue_form.html', {'venue': venue})
+
+@login_required
+def venue_delete(request, id):
+    if not request.user.is_organizer:
+        return redirect('events')
+    
+    venue = get_object_or_404(Venue, pk=id)
+    if request.method == 'POST':
+        venue.delete()
+    return redirect('venue_list')
