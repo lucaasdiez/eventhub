@@ -40,6 +40,24 @@ urlpatterns = [
     path('tickets/new/', TicketCreateView.as_view(), name='ticket_form'),
     path('tickets/<int:pk>/edit/', TicketUpdateView.as_view(), name='ticket_update'),
     path('tickets/<int:pk>/delete/', TicketDeleteView.as_view(), name='ticket_delete'),
+    path('tickets/<int:ticket_id>/refund/', 
+         views.request_refund, 
+         name='request_refund'),
+
+    # Gestión de reembolsos (organizador)
+    path('refunds/', 
+         views.manage_refunds, 
+         name='manage_refunds'),
+
+    # Detalle de reembolso (ambos roles)
+    path('refunds/<int:refund_id>/', 
+         views.refund_detail, 
+         name='refund_detail'),
+
+    # Acción unificada de aprobar/rechazar (organizador)
+    path('refunds/<int:refund_id>/<str:action>/',  # <- Cambio clave aquí
+         views.update_refund_status, 
+         name='update_refund_status'),
 ]
     
 
