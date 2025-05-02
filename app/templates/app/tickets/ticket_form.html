@@ -25,22 +25,7 @@
                                 Seleccione un evento
                             {% endif %}
                         </h3>
-                        <ul class="list-unstyled">
-                            <li><i class="bi bi-calendar-event"></i> 
-                                {% if event.scheduled_at %} 
-                                    {{ event.scheduled_at|date:"d/m/Y H:i" }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </li>
-                            <li><i class="bi bi-geo-alt"></i> 
-                                {% if event.venue and event.venue.address %}
-                                    {{ event.venue.address }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </li>
-                        </ul>
+
                     </div>
                 </div>
 
