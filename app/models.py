@@ -78,8 +78,6 @@ class Event(models.Model):
 
         self.save()
 
-<<<<<<< HEAD
-
 class Venue(models.Model):
     name = models.CharField(max_length=200, blank=False)
     address = models.CharField(max_length=300, blank=False)
@@ -146,7 +144,6 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
-=======
 class Comment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
@@ -164,4 +161,44 @@ class Comment(models.Model):
         
     def __str__(self):
         return f"{self.user.username} - {self.event.title}"
->>>>>>> comments-branch
+
+class Ticket(models.Model):
+    GENERAL = 'GENERAL'
+    VIP = 'VIP'
+    TYPE_CHOICES = [
+        (GENERAL, 'General'),
+        (VIP, 'VIP'),
+    ]
+
+    # Relación con User
+    user = models.ForeignKey(
+        'User',
+        on_delete=models.CASCADE, #Si borro el User también se van a borrar los tickets asociados
+        related_name='tickets' #Permite el uso de user.tickets.all() para obtener todos los tickets de un usuario
+    )
+    
+    # Relación con Event
+    event = models.ForeignKey(
+        'Event',
+        on_delete=models.CASCADE, #Si borro el evento, se van a borrar los tickets asociados
+        related_name='tickets'
+    )
+    
+    #Atributos de Ticket
+    buy_date = models.DateField(auto_now_add=True)
+    ticket_code = models.CharField(max_length=50, unique=True, editable=False)
+    quantity = models.PositiveIntegerField(default=1)
+    type = models.CharField(max_length=10, choices=TYPE_CHOICES, default=GENERAL)
+
+    def save(self, *args, **kwargs):
+        if not self.ticket_code:
+            prefix = 'VIP' if self.type == self.VIP else 'GEN'
+            super().save(*args, **kwargs)
+            self.ticket_code = f"{prefix}-{self.pk:04d}"
+            super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.ticket_code} - {self.type}"
+

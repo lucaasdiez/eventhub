@@ -1,6 +1,9 @@
 from django.contrib.auth.views import LogoutView
 from django.urls import path
+from django.urls import include, path
+
 from . import views
+from .views import TicketListView, TicketCreateView, TicketUpdateView, TicketDeleteView
 
 urlpatterns = [
 
@@ -22,17 +25,21 @@ urlpatterns = [
     path("events/<int:id>/edit/", views.event_form, name="event_edit"),
     path("events/<int:id>/", views.event_detail, name="event_detail"),
     path("events/<int:id>/delete/", views.event_delete, name="event_delete"),
-<<<<<<< HEAD
+
     path('categories/', views.CategoryListView.as_view(), name='category_list'),
     path('categories/new/', views.CategoryCreateView.as_view(), name='category_create'),
     path('categories/<int:pk>/edit/', views.CategoryUpdateView.as_view(), name='category_edit'),
     path('categories/<int:pk>/delete/', views.CategoryDeleteView.as_view(), name='category_delete'),
-=======
+
     path('comment/', views.comentarios_organizador,
          name='comentarios_organizador'),
     path('comentarios/eliminar/<int:comentario_id>/',
          views.eliminar_comentario, name='eliminar_comentario'),
->>>>>>> comments-branch
+
+    path('tickets/', TicketListView.as_view(), name='ticket_list'),
+    path('tickets/new/', TicketCreateView.as_view(), name='ticket_form'),
+    path('tickets/<int:pk>/edit/', TicketUpdateView.as_view(), name='ticket_update'),
+    path('tickets/<int:pk>/delete/', TicketDeleteView.as_view(), name='ticket_delete'),
 ]
     
 

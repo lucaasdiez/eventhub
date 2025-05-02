@@ -15,6 +15,11 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.urls import reverse_lazy
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+from .models import Event, User, Ticket
 
 
 def register(request):
@@ -269,3 +274,47 @@ def eliminar_comentario(request, comentario_id):
     )
     comentario.delete()
     return redirect('comentarios_organizador')
+class TicketListView(ListView):
+    model = Ticket
+    template_name = 'tickets/ticket_list.html'
+    context_object_name = 'tickets'
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+
+        if getattr(user, "is_organizer", False):
+            return qs.filter(event__organizer=user)
+
+        return qs.filter(user=user)
+        #qs = super().get_queryset()
+        #if (User.is_organizer): # type: ignore
+        #    return qs.filter(event__organizer=self.request.user)
+        #return qs.filter(user=self.request.user)
+
+    #def get_queryset(self):
+    #    return Ticket.objects.filter(user=self.request.user) #Aplico filtro para que el usuario solo vea sus tickets
+
+
+class TicketCreateView(LoginRequiredMixin, CreateView):
+    model = Ticket
+    template_name = 'tickets/ticket_form.html'
+    fields = ['event', 'quantity', 'type'] 
+    success_url = reverse_lazy('ticket_list')
+
+    def form_valid(self, form):
+        form.instance.user = self.request.user  #Asigna el usuario actual
+        return super().form_valid(form)
+
+class TicketUpdateView(LoginRequiredMixin, UpdateView):
+    model = Ticket
+    template_name = 'tickets/ticket_form.html'
+    fields = ['event', 'quantity', 'type']
+    success_url = reverse_lazy('ticket_list')
+
+class TicketDeleteView(LoginRequiredMixin, DeleteView):
+    model = Ticket
+    template_name = 'tickets/ticket_confirm_delete.html'
+    success_url = reverse_lazy('ticket_list')
+
+
