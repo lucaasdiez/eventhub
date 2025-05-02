@@ -18,6 +18,14 @@ urlpatterns = [
     path('venues/create/', views.venue_form, name='venue_create'),
     path('venues/<int:id>/edit/', views.venue_form, name='venue_edit'),
     path('venues/<int:id>/delete/', views.venue_delete, name='venue_delete'),
+    path("events/create/", views.event_form, name="event_form"),
+    path("events/<int:id>/edit/", views.event_form, name="event_edit"),
+    path("events/<int:id>/", views.event_detail, name="event_detail"),
+    path("events/<int:id>/delete/", views.event_delete, name="event_delete"),
+    path('categories/', views.CategoryListView.as_view(), name='category_list'),
+    path('categories/new/', views.CategoryCreateView.as_view(), name='category_create'),
+    path('categories/<int:pk>/edit/', views.CategoryUpdateView.as_view(), name='category_edit'),
+    path('categories/<int:pk>/delete/', views.CategoryDeleteView.as_view(), name='category_delete'),
 ]
     
 

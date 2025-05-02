@@ -2,6 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import Event, Venue
+from .models import Category
 
 class EventForm(forms.ModelForm):
     class Meta:
@@ -36,3 +37,16 @@ class EventForm(forms.ModelForm):
         if scheduled_at and scheduled_at < timezone.now():
             raise ValidationError("La fecha/hora debe ser futura.")
         return scheduled_at
+
+
+class CategoryForm(forms.ModelForm):
+    class Meta:
+        model = Category
+        fields = ['name', 'description']
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if not name:
+            raise forms.ValidationError("El nombre es obligatorio.")
+        # Puedes agregar más validaciones si es necesario
+        return name
