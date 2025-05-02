@@ -3,8 +3,11 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.urls import reverse_lazy
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin
 
-from .models import Event, User
+from .models import Event, User, Ticket
 
 
 def register(request):
@@ -125,3 +128,30 @@ def event_form(request, id=None):
         "app/event_form.html",
         {"event": event, "user_is_organizer": request.user.is_organizer},
     )
+
+class TicketListView(ListView):
+    model = Ticket
+    template_name = 'tickets/ticket_list.html'
+    context_object_name = 'tickets'
+
+
+class TicketCreateView(LoginRequiredMixin, CreateView):
+    model = Ticket
+    template_name = 'tickets/ticket_form.html'
+    fields = ['event', 'ticket_code', 'quantity', 'type'] 
+    success_url = reverse_lazy('ticket_list')
+
+    def form_valid(self, form):
+        form.instance.user = self.request.user  #Asigna el usuario actual
+        return super().form_valid(form)
+
+class TicketUpdateView(LoginRequiredMixin, UpdateView):
+    model = Ticket
+    template_name = 'tickets/ticket_form.html'
+    fields = ['event','ticket_code', 'quantity', 'type']
+    success_url = reverse_lazy('ticket_list')
+
+class TicketDeleteView(LoginRequiredMixin, DeleteView):
+    model = Ticket
+    template_name = 'tickets/ticket_confirm_delete.html'
+    success_url = reverse_lazy('ticket_list')
