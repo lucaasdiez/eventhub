@@ -32,7 +32,7 @@ def register(request):
                 email=email, username=username, password=password, is_organizer=is_organizer
             )
             login(request, user)
-            return redirect("events")
+            return redirect("home")
 
     return render(request, "accounts/register.html", {})
 
@@ -57,11 +57,15 @@ def login_view(request):
 
 def home(request):
     user = request.user
-    user_is_organizer = user.is_organizer
 
-    return render(request, 'home.html', {
-        'user_is_organizer': user_is_organizer
-    })
+    user_is_organizer = False
+    if user.is_authenticated:
+        user_is_organizer = user.is_organizer
+
+    context = {
+        "user_is_organizer": user_is_organizer,
+    }
+    return render(request, "home.html", context)
 
 
 @login_required
