@@ -11,5 +11,5 @@ class RefundRequestForm(forms.ModelForm):
         model = RefundRequest
         fields = ['reason', 'policy_30_days']
         widgets = {
-            'reason': forms.Textarea(attrs={'rows': 4})
+            'reason': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Proporciona más información...'})
         }

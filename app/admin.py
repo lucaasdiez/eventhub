@@ -1,7 +1,7 @@
 # app/admin.py
 from django.contrib import admin
-from .models import Ticket
+from .models import Event, Ticket, RefundRequest
 
-@admin.register(Ticket)
-class TicketAdmin(admin.ModelAdmin):
-    list_display = ('code', 'user', 'event')
+admin.site.register(Event)
+admin.site.register(Ticket)
+admin.site.register(RefundRequest)
