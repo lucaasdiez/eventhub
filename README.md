@@ -2,6 +2,20 @@
 
 Aplicación web para venta de entradas utilizada en la cursada 2025 de Ingeniería y Calidad de Software. UTN-FRLP
 
+## Participantes
+
+Franco Beneforti
+
+Lucas Diez
+
+Emilio Bordignon 
+
+Lucas Cambas Sanchez
+
+Gabriela Otero
+
+Tomas Coch
+
 ## Dependencias
 
 -   python 3
@@ -30,16 +44,3 @@ Aplicación web para venta de entradas utilizada en la cursada 2025 de Ingenier�
 
 `python manage.py runserver`
 
-## Participantes
-
-Franco Beneforti
-
-Lucas Diez
-
-Bordignon Emilio
-
-Lucas Cambas Sanchez
-
-Gabriela Otero
-
-Tomas Coch
