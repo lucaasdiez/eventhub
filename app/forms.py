@@ -21,7 +21,7 @@ class EventForm(forms.ModelForm):
 
     def clean_title(self):
         title = self.cleaned_data.get('title')
-        if len(title.strip()) < 5:
+        if len(title.strip()) < 5: 
             raise ValidationError("El título debe tener al menos 5 caracteres.")
         return title
 

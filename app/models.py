@@ -33,7 +33,7 @@ class Event(models.Model):
     scheduled_at = models.DateTimeField()  
     total_rating = models.IntegerField(default=0)
     organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="organized_events")
-    #category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, blank=True)
+    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, blank=True)
     venue = models.ForeignKey('Venue', on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
