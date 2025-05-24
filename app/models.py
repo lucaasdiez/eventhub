@@ -109,6 +109,7 @@ class Event(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     premium = models.BooleanField(default=False, verbose_name="Evento Premium")  
+    available_tickets = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.title
