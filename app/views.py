@@ -290,15 +290,28 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
         return context
 
     def form_valid(self, form):
-        # Calcular precio según el tipo
+        event = form.cleaned_data['event']
+        quantity = form.cleaned_data['quantity']
+
+        if event.available_tickets < quantity:  
+            messages.error(
+                self.request, 
+                f"⚠️ Solo quedan {event.available_tickets} entradas disponibles"
+            )
+            return redirect('ticket_form')
+
+        # Cálculo de precio 
         if form.cleaned_data['type'] == 'VIP':
             precio_unitario = 100.00
         else:
             precio_unitario = 50.00
 
         form.instance.user = self.request.user
-        form.instance.price_paid = precio_unitario * form.cleaned_data['quantity']
-        return super().form_valid(form)
+        form.instance.price_paid = precio_unitario * quantity
+        
+        response = super().form_valid(form)
+        event.update_availability() 
+        return response
 
 class TicketUpdateView(LoginRequiredMixin, UpdateView):
     model = Ticket
