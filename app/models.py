@@ -137,12 +137,15 @@ class Event(models.Model):
         if len(errors.keys()) > 0:
             return False, errors
 
-        return Event.objects.create(
+        event= Event.objects.create(
             title=title,
             description=description,
             scheduled_at=scheduled_at,
             organizer=organizer,
-        ), None
+        )
+        if event.venue:
+            event.update_availability()
+        return event, None
 
     def update(self, title, description, scheduled_at, organizer):
         self.title = title or self.title
