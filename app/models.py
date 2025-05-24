@@ -138,6 +138,8 @@ class Event(models.Model):
             scheduled_at=scheduled_at,
             organizer=organizer,
         ), None
+    
+  
 
     def update(self, title, description, scheduled_at, organizer):
         self.title = title or self.title
@@ -182,6 +184,23 @@ class Ticket(models.Model):
     type = models.CharField(max_length=10, choices=TYPE_CHOICES, default=GENERAL)
     price_paid = models.DecimalField(max_digits=10, decimal_places=2) 
     used = models.BooleanField(default=False)
+
+    @classmethod
+    def validate_ticket_purchase(cls, user, event, quantity):
+        """
+        Valida que un usuario no pueda comprar más de 4 entradas por evento.
+        Retorna (es_valido, mensaje_error)
+        """
+        MAX_TICKETS_PER_EVENT = 4
+        tickets_existentes = cls.objects.filter(user=user, event=event).aggregate(
+            total=models.Sum('quantity')
+        )['total'] or 0
+        
+        if tickets_existentes + quantity > MAX_TICKETS_PER_EVENT:
+            disponibles = MAX_TICKETS_PER_EVENT - tickets_existentes
+            return False, f"No puedes comprar más de {MAX_TICKETS_PER_EVENT} entradas por evento. Ya tienes {tickets_existentes} entradas para este evento. Puedes comprar hasta {disponibles} entradas más."
+        
+        return True, ""
 
     def save(self, *args, **kwargs):
         if not self.ticket_code:

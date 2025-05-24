@@ -290,6 +290,17 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
         return context
 
     def form_valid(self, form):
+        # Validar límite de tickets por evento
+        is_valid, error_msg = Ticket.validate_ticket_purchase(
+            user=self.request.user,
+            event=form.cleaned_data['event'],
+            quantity=form.cleaned_data['quantity']
+        )
+        
+        if not is_valid:
+            form.add_error(None, error_msg)
+            return self.form_invalid(form)
+            
         # Calcular precio según el tipo
         if form.cleaned_data['type'] == 'VIP':
             precio_unitario = 100.00
