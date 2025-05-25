@@ -23,6 +23,7 @@
                 <th>Fecha</th>
                 <th>Organizador</th>
                 <th>Acciones</th>
+                <th>Estado</th>
             </tr>
         </thead>
         <tbody>
@@ -32,6 +33,11 @@
                     <td>{{ event.description|truncatechars:50 }}</td>
                     <td>{{ event.scheduled_at|date:"d M Y, H:i" }}</td>
                     <td>{{ event.organizer.username }}</td>
+                    <td>
+                        <span class="badge bg-{{ event.status }}">
+                             {{ event.get_status_display }}
+                        </span>
+                    </td>
                     <td>
                         <div class="hstack gap-2">
                             <a href="{% url 'event_detail' event.id %}"

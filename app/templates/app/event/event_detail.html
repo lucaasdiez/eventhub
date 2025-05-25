@@ -76,6 +76,49 @@
                         </div>
                     </div>
 
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-light rounded-circle p-2 me-3">
+                             <i class="bi bi-info-circle text-primary fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">Estado del Evento</h6>
+                            <span class="badge bg-{{ event.status }}">
+                                {{ event.get_status_display }}
+                            </span>
+                        </div>
+                        <style>
+                            .bg-active { 
+                                background-color: #28a745 !important; 
+                                color: white !important;
+                            }
+
+
+                            .bg-canceled { 
+                                background-color: #dc3545 !important; 
+                                color: white !important;
+                            }
+
+
+                            .bg-rescheduled { 
+                                background-color: #ffc107 !important; 
+                                color: black !important;
+                            }
+
+
+                            .bg-sold_out { 
+                                background-color: #fd7e14 !important; 
+                                color: white !important;
+                            }
+
+
+                            .bg-finished { 
+                                background-color: #6c757d !important; 
+                                color: white !important;
+                            }
+                        </style>
+                    </div>
+
+
                     <div class="d-flex align-items-center">
                         <div class="bg-light rounded-circle p-2 me-3">
                             <i class="bi bi-tags text-primary fs-5"></i>

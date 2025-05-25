@@ -76,6 +76,18 @@
                                 </select>
                                 {{ form.venue.errors }}
                             </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Estado del Evento</label>
+                                <select class="form-select" name="status" id="status">
+                                    {% for value, label in form.status.field.choices %}
+                                        <option value="{{ value }}" 
+                                            {% if form.status.value == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                             
                             {% if form.categories.field.queryset.all %}
                             <div class="border p-3 mb-4 rounded">

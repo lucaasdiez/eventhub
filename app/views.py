@@ -88,6 +88,7 @@ def events(request):
 @login_required
 def event_detail(request, id):
     event = get_object_or_404(Event, pk=id)
+    event.update_status()
     comments = Comment.objects.filter(event=event).order_by('-created_at')
 
     if request.method == 'POST':

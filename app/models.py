@@ -1,11 +1,12 @@
 from datetime import timedelta
 from decimal import Decimal
 
+
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
-
+from django.db.models import Sum
 
 class User(AbstractUser):
     is_organizer = models.BooleanField(default=False)
@@ -96,7 +97,14 @@ class Category(models.Model):
     def __str__(self):
         return self.name
     
-    
+STATUS_CHOICES = [
+    ('active', 'Activo'),
+    ('canceled', 'Cancelado'),
+    ('rescheduled', 'Reprogramado'),
+    ('sold_out', 'Agotado'),
+    ('finished', 'Finalizado')
+]
+
 class Event(models.Model):
     id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=200)
@@ -108,7 +116,8 @@ class Event(models.Model):
     venue = models.ForeignKey(Venue, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    premium = models.BooleanField(default=False, verbose_name="Evento Premium")  
+    premium = models.BooleanField(default=False, verbose_name="Evento Premium") 
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='active') 
 
     def __str__(self):
         return self.title
@@ -144,6 +153,14 @@ class Event(models.Model):
         self.description = description or self.description
         self.scheduled_at = scheduled_at or self.scheduled_at
         self.organizer = organizer or self.organizer
+        self.save()
+
+    def update_status(self):
+        now = timezone.now()
+        if self.scheduled_at < now:
+            self.status = 'finished'
+        elif self.venue and self.tickets.aggregate(total=Sum('quantity'))['total'] >= self.venue.capacity:
+            self.status = 'sold_out'
         self.save()
 
 
