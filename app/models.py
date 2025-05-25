@@ -181,6 +181,22 @@ class Event(models.Model):
         self.organizer = organizer or self.organizer
         self.save()
 
+    def entradas_vendidas(self):
+        return sum(ticket.quantity for ticket in self.tickets.all())
+
+    def porcentaje_ocupacion(self):
+        if not self.venue or self.venue.capacity == 0:
+            return 0
+        return (self.entradas_vendidas() / self.venue.capacity) * 100
+
+    def estado_demanda(self):
+        porcentaje = self.porcentaje_ocupacion()
+        if porcentaje > 90:
+            return "Alta demanda"
+        elif porcentaje < 10:
+            return "Baja demanda"
+        return ""
+
 
 
 class Comment(models.Model):
