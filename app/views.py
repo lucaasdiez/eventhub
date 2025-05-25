@@ -29,7 +29,7 @@ def register(request):
         if len(errors) > 0:
             return render(
                 request,
-                "accounts/register.html",
+                "app/accounts/register.html",
                 {
                     "errors": errors,
                     "data": request.POST,
