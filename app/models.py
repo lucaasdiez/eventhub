@@ -207,6 +207,7 @@ class Ticket(models.Model):
             prefix = 'VIP' if self.type == self.VIP else 'GEN'
             super().save(*args, **kwargs)
             self.ticket_code = f"{prefix}-{self.pk:04d}"
+            kwargs['force_insert'] = False
             super().save(*args, **kwargs)
         else:
             super().save(*args, **kwargs)
