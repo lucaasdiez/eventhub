@@ -311,3 +311,25 @@ class EventCRUDTest(EventBaseTest):
 
         # Verificar que el evento eliminado ya no aparece en la tabla
         expect(self.page.get_by_text("Evento de prueba 1")).to_have_count(0)
+
+
+    def test_change_event_status_as_organizer(self):
+        """Verifica que un organizador puede cambiar el estado de un evento"""
+        self.login_user("lucas", "administrador")
+        self.page.goto(f"{self.live_server_url}/events/{self.event1.id}/edit/")
+
+        # Seleccionar nuevo estado: "Cancelado"
+        status_dropdown = self.page.get_by_label("Estado del Evento")
+        status_dropdown.select_option("cancelado")
+
+        # Enviar formulario
+        self.page.get_by_role("button", name="Guardar Cambios").click()
+
+        # Verificar redirección y mensaje de éxito
+        expect(self.page).to_have_url(re.compile(r"/events/"))
+        success_message = self.page.get_by_text("Estado actualizado correctamente")
+        expect(success_message).to_be_visible()
+
+        # Verificar que el estado se refleja en la tabla
+        row = self.page.locator("table tbody tr").first
+        expect(row.locator("td").nth(3)).to_have_text("Cancelado")  # Asumiendo que la columna 3 es "Estado"
