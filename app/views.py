@@ -10,6 +10,8 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import generic
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+from django.db import transaction
+from django.db import IntegrityError 
 
 from .forms import CategoryForm, CommentForm, EventForm, RefundRequestForm
 from .models import Category, Comment, Event, RefundRequest, Ticket, User, Venue
@@ -90,6 +92,7 @@ def event_detail(request, id):
     event = get_object_or_404(Event, pk=id)
     event.update_status()
     comments = Comment.objects.filter(event=event).order_by('-created_at')
+    disponibles = (event.venue.capacity if event.venue else 0) - event.tickets_sold
 
     if request.method == 'POST':
         form = CommentForm(request.POST)
@@ -107,6 +110,7 @@ def event_detail(request, id):
         'event': event,
         'comments': comments,
         'form': form,
+        'disponibles': max(disponibles, 0)
     })
 
 

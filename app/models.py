@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from django.db.models import Sum
+import uuid
 
 class User(AbstractUser):
     is_organizer = models.BooleanField(default=False)
@@ -36,7 +37,7 @@ class Venue(models.Model):
     name = models.CharField(max_length=200, blank=False)
     address = models.CharField(max_length=300, blank=False)
     city = models.CharField(max_length=100, blank=False)
-    capacity = models.PositiveIntegerField(blank=False)
+    capacity = models.PositiveIntegerField(default=0)
     contact_info = models.TextField(blank=False)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
@@ -98,11 +99,11 @@ class Category(models.Model):
         return self.name
     
 STATUS_CHOICES = [
-    ('active', 'Activo'),
-    ('canceled', 'Cancelado'),
-    ('rescheduled', 'Reprogramado'),
-    ('sold_out', 'Agotado'),
-    ('finished', 'Finalizado')
+    ('activo', 'Activo'),
+    ('canceledo', 'Cancelado'),
+    ('reprogramado', 'Reprogramado'),
+    ('agotado', 'Agotado'),
+    ('finalizado', 'Finalizado')
 ]
 
 class Event(models.Model):
@@ -118,6 +119,7 @@ class Event(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     premium = models.BooleanField(default=False, verbose_name="Evento Premium") 
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='active') 
+    tickets_sold = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.title
@@ -157,10 +159,13 @@ class Event(models.Model):
 
     def update_status(self):
         now = timezone.now()
-        if self.scheduled_at < now:
-            self.status = 'finished'
-        elif self.venue and self.tickets.aggregate(total=Sum('quantity'))['total'] >= self.venue.capacity:
-            self.status = 'sold_out'
+    
+        if self.scheduled_at <= now:
+            self.status = "finalizado"
+        elif self.venue and self.tickets_sold >= self.venue.capacity:
+            self.status = "agotado"
+        else:
+            self.status = "activo"
         self.save()
 
 
@@ -202,8 +207,8 @@ class Ticket(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.ticket_code:
-            prefix = 'VIP' if self.type == self.VIP else 'GEN'
             super().save(*args, **kwargs)
+            prefix = 'VIP' if self.type == self.VIP else 'GEN'
             self.ticket_code = f"{prefix}-{self.pk:04d}"
             super().save(*args, **kwargs)
         else:
