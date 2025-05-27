@@ -27,13 +27,13 @@ class TicketE2ETest(LiveServerTestCase):
             page = browser.new_page()
 
             # Ir a login
-            page.goto(f"{self.live_server_url}/login/")
+            page.goto(f"{self.live_server_url}/accounts/login/")
             page.fill('input[name="username"]', 'e2euser')
             page.fill('input[name="password"]', '1234')
             page.click('button[type="submit"]')
 
             # Ir a página de compra
-            page.goto(f"{self.live_server_url}/tickets/nuevo/")
+            page.goto(f"{self.live_server_url}/tickets/new/")
 
             # Seleccionar cantidad y tipo
             page.fill('#id_quantity', '4')
