@@ -4,6 +4,9 @@ from decimal import Decimal
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import QuerySet, Sum
+from django.db.models.signals import post_delete, post_save
+from django.dispatch import receiver
 from django.utils import timezone
 
 
@@ -109,6 +112,8 @@ class Event(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     premium = models.BooleanField(default=False, verbose_name="Evento Premium")  
+    available_tickets = models.PositiveIntegerField(default=0)
+    tickets: QuerySet['Ticket']
 
     def __str__(self):
         return self.title
@@ -132,12 +137,15 @@ class Event(models.Model):
         if len(errors.keys()) > 0:
             return False, errors
 
-        return Event.objects.create(
+        event= Event.objects.create(
             title=title,
             description=description,
             scheduled_at=scheduled_at,
             organizer=organizer,
-        ), None
+        )
+        if event.venue:
+            event.update_availability()
+        return event, None
 
     def update(self, title, description, scheduled_at, organizer):
         self.title = title or self.title
@@ -145,12 +153,23 @@ class Event(models.Model):
         self.scheduled_at = scheduled_at or self.scheduled_at
         self.organizer = organizer or self.organizer
         self.save()
+        
+    def tickets_sold(self):
+        """Total de entradas vendidas para este evento."""
+        return self.tickets.aggregate(total=Sum('quantity'))['total'] or 0  
+    
+    def update_availability(self):
+        """Actualiza available_tickets según el venue y tickets vendidos."""
+        if self.venue:  # Si el evento tiene un venue asignado
+            self.available_tickets = self.venue.capacity - self.tickets_sold()
+            self.save(update_fields=['available_tickets'])
+
 
 
 
 class Comment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='comments')
     title = models.CharField(max_length=120)
     content =models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -188,6 +207,7 @@ class Ticket(models.Model):
             prefix = 'VIP' if self.type == self.VIP else 'GEN'
             super().save(*args, **kwargs)
             self.ticket_code = f"{prefix}-{self.pk:04d}"
+            kwargs['force_insert'] = False
             super().save(*args, **kwargs)
         else:
             super().save(*args, **kwargs)
@@ -250,3 +270,8 @@ class RefundRequest(models.Model):
             return False, "Pasaron 30 días del evento (premium)"
             
         return True, "Reembolso permitido"
+
+@receiver([post_save, post_delete], sender=Ticket)
+def update_event_availability(sender, instance, **kwargs):
+    """Actualiza disponibilidad al crear/eliminar tickets."""
+    instance.event.update_availability()
