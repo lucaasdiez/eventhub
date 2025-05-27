@@ -276,17 +276,25 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
     fields = ['event', 'quantity', 'type']
     success_url = reverse_lazy('ticket_list')
 
+    def get_initial(self):
+        initial = super().get_initial()
+        event_id = self.request.GET.get('event')
+        if event_id:
+            initial['event'] = event_id
+        return initial
+
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['precio_base_general'] = 50.00  # Precio hardcodeado
         context['precio_base_vip'] = 100.00     # Precio hardcodeado
-        event_id = self.request.POST.get('event') or self.request.GET.get('event')
+        event_id =self.request.GET.get('event')
         
         if event_id:
             try:
-                context['event'] = Event.objects.get(id=int(event_id))  # Convertir a entero
-            except (Event.DoesNotExist, ValueError, TypeError):
-                context['event'] = None
+                context['selected_event'] = Event.objects.get(id=event_id)
+            except Event.DoesNotExist:
+                pass
         return context
 
     def form_valid(self, form):

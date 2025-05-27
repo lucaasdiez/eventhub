@@ -22,7 +22,7 @@
                 {% else %}
                     {% if event.available_tickets > 0 %}
                         <div class="d-flex align-items-center gap-2">
-                            <a href="{% url 'ticket_form' %}" class="btn btn-success btn-sm">
+                            <a href="{% url 'ticket_form' %}?event={{ event.id }}" class="btn btn-success btn-sm">
                                 <i class="bi bi-ticket-perforated me-1"></i> Comprar Entrada
                             </a>
                             <small class="text-muted">
