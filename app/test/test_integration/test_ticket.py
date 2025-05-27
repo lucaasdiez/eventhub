@@ -2,6 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 from app.models import User, Event, Ticket, Venue
 from datetime import datetime, timedelta
+from django.utils import timezone
 
 class TicketPurchaseIntegrationTest(TestCase):
     def setUp(self):
@@ -14,9 +15,10 @@ class TicketPurchaseIntegrationTest(TestCase):
         self.event = Event.objects.create(
             title="Evento Integración",
             description="Test de integración",
-            scheduled_at=datetime.now() + timedelta(days=7),
+            scheduled_at=timezone.now() + timedelta(days=7),
             organizer=self.user,
-            venue=self.venue
+            venue=self.venue,
+            available_tickets=10 
         )
 
     def test_compra_valida(self):
