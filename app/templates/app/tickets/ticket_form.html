@@ -50,6 +50,13 @@
                         <div class="col-md-6">
                             <label for="{{ form.quantity.id_for_label }}" class="form-label">Cantidad</label>
                             {{ form.quantity }}
+                            {% if form.quantity.errors %}  <!-- Mostrar errores si existen -->
+                                <div class="alert alert-danger mt-2">
+                                    {% for error in form.quantity.errors %}
+                                        <small class="d-block"><i class="bi bi-exclamation-circle"></i> {{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                             <small class="text-muted d-block mt-1">Máximo 4 entradas por evento</small>
                         </div>
                     </div>

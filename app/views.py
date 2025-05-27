@@ -264,7 +264,7 @@ def eliminar_comentario(request, comentario_id):
     comentario.delete()
     return redirect('comentarios_organizador')
 
-class TicketListView(ListView):
+class TicketListView(LoginRequiredMixin, ListView):
     model = Ticket
     template_name = 'app/tickets/ticket_list.html'
     context_object_name = 'tickets'
