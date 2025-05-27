@@ -29,7 +29,7 @@ def register(request):
         if len(errors) > 0:
             return render(
                 request,
-                "accounts/register.html",
+                "app/accounts/register.html",
                 {
                     "errors": errors,
                     "data": request.POST,
@@ -82,7 +82,8 @@ def events(request):
     queryset = Event.objects.all().order_by("scheduled_at")
     if not request.user.is_organizer:
         queryset = queryset.filter(scheduled_at__gte=timezone.now())
-    return render(request, "app/event/events.html", {"events": queryset})
+    return render(request, "app/event/events.html", {"events": queryset,
+        "user_is_organizer": request.user.is_organizer})
 
 
 @login_required
@@ -121,13 +122,18 @@ def event_delete(request, id):
         messages.success(request, "Evento eliminado")
         return redirect("events")
 
-    return render(request, "app/event/event_confirm_delete.html", {"event": event})
+    return redirect("events")   
 
 
 @login_required
 def event_form(request, id=None):
+    if not request.user.is_organizer:
+        messages.error(request, "No tienes permisos")
+        return redirect("events")
+    
     event = get_object_or_404(Event, pk=id) if id else None
     all_categories = Category.objects.all()
+    
     if request.method == 'POST':
         form = EventForm(request.POST, instance=event, user=request.user)
         if form.is_valid():
@@ -135,15 +141,18 @@ def event_form(request, id=None):
             event.organizer = request.user
             event.save()
             form.save_m2m()  
-            return redirect('event_detail', id=event.id)
+            return redirect('events')
+        else:
+            print(form.errors)
     else:
         form = EventForm(instance=event, user=request.user)
 
     return render(request, 'app/event/event_form.html', {
         'form': form,
         'categories': all_categories, 
-        'event': event
-        })
+        'event': event,
+        'user_is_organizer': request.user.is_organizer 
+    })
 
 
 @login_required
@@ -276,17 +285,25 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
     fields = ['event', 'quantity', 'type']
     success_url = reverse_lazy('ticket_list')
 
+    def get_initial(self):
+        initial = super().get_initial()
+        event_id = self.request.GET.get('event')
+        if event_id:
+            initial['event'] = event_id
+        return initial
+
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['precio_base_general'] = 50.00  # Precio hardcodeado
         context['precio_base_vip'] = 100.00     # Precio hardcodeado
-        event_id = self.request.POST.get('event') or self.request.GET.get('event')
+        event_id =self.request.GET.get('event')
         
         if event_id:
             try:
-                context['event'] = Event.objects.get(id=int(event_id))  # Convertir a entero
-            except (Event.DoesNotExist, ValueError, TypeError):
-                context['event'] = None
+                context['selected_event'] = Event.objects.get(id=event_id)
+            except Event.DoesNotExist:
+                pass
         return context
 
     def form_valid(self, form):
@@ -302,14 +319,32 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
             return self.form_invalid(form)
             
         # Calcular precio según el tipo
+        event = form.cleaned_data['event']
+        quantity = form.cleaned_data['quantity']
+
+        if event.available_tickets == 0:
+            messages.error(self.request, "Lo sentimos, las entradas para este evento están agotadas.")
+            return redirect('ticket_form')
+
+        if event.available_tickets < quantity:
+            messages.error(
+                self.request,
+                f"Solo quedan {event.available_tickets} entradas disponibles."
+            )
+            return redirect('ticket_form')
+
+        # Cálculo de precio 
         if form.cleaned_data['type'] == 'VIP':
             precio_unitario = 100.00
         else:
             precio_unitario = 50.00
 
         form.instance.user = self.request.user
-        form.instance.price_paid = precio_unitario * form.cleaned_data['quantity']
-        return super().form_valid(form)
+        form.instance.price_paid = precio_unitario * quantity
+        
+        response = super().form_valid(form)
+        event.update_availability() 
+        return response
 
 class TicketUpdateView(LoginRequiredMixin, UpdateView):
     model = Ticket

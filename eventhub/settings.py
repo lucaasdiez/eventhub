@@ -110,7 +110,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
 AUTH_USER_MODEL = "app.User"
-LANGUAGE_CODE = "es-ar"
+LANGUAGE_CODE = "es-es"
 
 TIME_ZONE = "UTC"
 
