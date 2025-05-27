@@ -6,14 +6,18 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Eventos</h1>
-        {% if request.user.is_organizer %}
-            <a href="{% url 'event_create' %}" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-2" aria-hidden="true"></i>
-                Crear Evento
+        <div>
+            <a href="{% url 'lista_favoritos' %}" class="btn btn-outline-warning me-2">
+                <i class="bi bi-star-fill me-1"></i> Mis Favoritos
             </a>
-        {% endif %}
+            {% if request.user.is_organizer %}
+                <a href="{% url 'event_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2" aria-hidden="true"></i>
+                    Crear Evento
+                </a>
+            {% endif %}
+        </div>
     </div>
-    
 
     <table class="table">
         <thead>
@@ -28,7 +32,12 @@
         <tbody>
             {% for event in events %}
                 <tr>
-                    <td>{{ event.title }}</td>
+                    <td>
+                        {{ event.title }}
+                        {% if event.id in favoritos_ids %}
+                            <span class="text-warning ms-1"><i class="bi bi-star-fill"></i></span>
+                        {% endif %}
+                    </td>
                     <td>{{ event.description|truncatechars:50 }}</td>
                     <td>{{ event.scheduled_at|date:"d M Y, H:i" }}</td>
                     <td>{{ event.organizer.username }}</td>
@@ -41,6 +50,22 @@
                                 <i class="bi bi-eye" aria-hidden="true"></i>
                             </a>
                             
+                            <!-- Botón de favorito (visible para todos los usuarios) -->
+                            {% if event.id in favoritos_ids %}
+                                <a href="{% url 'eliminar_favorito' event.id %}"
+                                   class="btn btn-sm btn-warning"
+                                   title="Quitar de favoritos">
+                                    <i class="bi bi-star-fill"></i>
+                                </a>
+                            {% else %}
+                                <a href="{% url 'agregar_favorito' event.id %}"
+                                   class="btn btn-sm btn-outline-warning"
+                                   title="Añadir a favoritos">
+                                    <i class="bi bi-star"></i>
+                                </a>
+                            {% endif %}
+                            
+                            <!-- Botones de edición (solo para organizador) -->
                             {% if request.user == event.organizer %}
                                 <a href="{% url 'event_edit' event.id %}"
                                     class="btn btn-sm btn-outline-secondary"
@@ -58,18 +83,6 @@
                                         <i class="bi bi-trash" aria-hidden="true"></i>
                                     </button>
                                 </form>
-                                <a>
-                                    <form>
-                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Favorito">
-                                            {% if event in favorite_events %}
-                                                <i class="bi bi-star-fill" aria-hidden="true"></i>
-                                            {% else %}
-                                                <i class="bi bi-star" aria-hidden="true"></i>
-                                            {% endif %}
-                                        </button>
-
-                                    </form>
-                                </a>
                             {% endif %}
                         </div>
                     </td>

@@ -77,36 +77,45 @@ def home(request):
     return render(request, "home.html", context)
 
 
-@login_required
-def events(request):
-    queryset = Event.objects.all().order_by("scheduled_at")
-    if not request.user.is_organizer:
-        queryset = queryset.filter(scheduled_at__gte=timezone.now())
-    return render(request, "app/event/events.html", {"events": queryset})
+# @login_required
+# def events(request):
+#     queryset = Event.objects.all().order_by("scheduled_at")
+#     if not request.user.is_organizer:
+#         queryset = queryset.filter(scheduled_at__gte=timezone.now())
+#     return render(request, "app/event/events.html", {"events": queryset})
 
 
-@login_required
-def event_detail(request, id):
-    event = get_object_or_404(Event, pk=id)
-    comments = Comment.objects.filter(event=event).order_by('-created_at')
-
-    if request.method == 'POST':
-        form = CommentForm(request.POST)
-        if form.is_valid():
-            comment = form.save(commit=False)
-            comment.event = event
-            comment.user = request.user
-            comment.save()
-            # redirige luego de guardar
-            return redirect('event_detail', id=event.id)
-    else:
-        form = CommentForm()
-
-    return render(request, 'app/event/event_detail.html', {
-        'event': event,
-        'comments': comments,
-        'form': form,
+def eventos(request):
+    events = Event.objects.all()
+    favorite_events = request.user.favorites.all() if request.user.is_authenticated else []
+    return render(request, "app/events.html", {
+        "events": events,
+        "favorite_events": favorite_events,
     })
+
+
+# @login_required
+# def event_detail(request, id):
+#     event = get_object_or_404(Event, pk=id)
+#     comments = Comment.objects.filter(event=event).order_by('-created_at')
+
+#     if request.method == 'POST':
+#         form = CommentForm(request.POST)
+#         if form.is_valid():
+#             comment = form.save(commit=False)
+#             comment.event = event
+#             comment.user = request.user
+#             comment.save()
+#             # redirige luego de guardar
+#             return redirect('event_detail', id=event.id)
+#     else:
+#         form = CommentForm()
+
+#     return render(request, 'app/event/event_detail.html', {
+#         'event': event,
+#         'comments': comments,
+#         'form': form,
+#     })
 
 
 @login_required
@@ -412,4 +421,75 @@ def request_refund(request):
     return render(request, 'app/refunds/request.html', {
         'form': form,
         'policy_message': "Puedes solicitar reembolsos hasta 48 horas antes del evento."
+    })
+
+
+
+
+
+@login_required
+def agregar_favorito(request, event_id):
+    evento = get_object_or_404(Event, pk=event_id)
+    
+    
+    if not request.user.favoritos.filter(pk=evento.id).exists():
+        request.user.favoritos.add(evento)
+        messages.success(request, f"'{evento.title}' añadido a favoritos")
+    else:
+        messages.info(request, f"'{evento.title}' ya está en tus favoritos")
+    
+    
+    return redirect(request.META.get('HTTP_REFERER', 'lista_favoritos'))
+
+@login_required
+def eliminar_favorito(request, event_id):
+    evento = get_object_or_404(Event, pk=event_id)
+    request.user.favoritos.remove(evento)
+    messages.success(request, f"'{evento.title}' eliminado de favoritos")
+    return redirect(request.META.get('HTTP_REFERER', 'lista_favoritos'))
+
+@login_required
+def lista_favoritos(request):
+    favoritos = request.user.favoritos.all().order_by('-scheduled_at')
+    return render(request, 'app/event/favoritos/lista.html', {
+        'favoritos': favoritos
+    })
+
+@login_required
+def event_detail(request, id):
+    event = get_object_or_404(Event, pk=id)
+    comments = Comment.objects.filter(event=event).order_by('-created_at')
+    es_favorito = request.user.favoritos.filter(pk=event.id).exists()
+
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.event = event
+            comment.user = request.user
+            comment.save()
+            return redirect('event_detail', id=event.id)
+    else:
+        form = CommentForm()
+
+    return render(request, 'app/event/event_detail.html', {
+        'event': event,
+        'comments': comments,
+        'form': form,
+        'es_favorito': es_favorito  # Nuevo contexto
+    })
+
+
+@login_required
+def events(request):
+    queryset = Event.objects.all().order_by("scheduled_at")
+    if not request.user.is_organizer:
+        queryset = queryset.filter(scheduled_at__gte=timezone.now())
+    
+    # Obtener IDs de eventos favoritos para marcar en template
+    favoritos_ids = request.user.favoritos.values_list('id', flat=True)
+    
+    return render(request, "app/event/events.html", {
+        "events": queryset,
+        "favoritos_ids": favoritos_ids
     })

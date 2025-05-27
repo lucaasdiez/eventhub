@@ -39,6 +39,13 @@ urlpatterns = [
     path('refunds/', views.manage_refunds, name='manage_refunds'),
     path('refunds/<int:refund_id>/', views.refund_detail, name='refund_detail'),
     path('refunds/<int:refund_id>/<str:action>/', views.update_refund_status, name='update_refund_status'),
+
+    path("events/<int:event_id>/favorito/", views.agregar_favorito, name="agregar_favorito"),
+    path("events/<int:event_id>/favorito/eliminar/", views.eliminar_favorito, name="eliminar_favorito"),
+    path("favoritos/", views.lista_favoritos, name="lista_favoritos"),
+    path('eventos/favoritos/', views.lista_favoritos, name='lista_favoritos'),
+
+
 ]
     
 
