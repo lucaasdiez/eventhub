@@ -82,7 +82,8 @@ def events(request):
     queryset = Event.objects.all().order_by("scheduled_at")
     if not request.user.is_organizer:
         queryset = queryset.filter(scheduled_at__gte=timezone.now())
-    return render(request, "app/event/events.html", {"events": queryset})
+    return render(request, "app/event/events.html", {"events": queryset,
+        "user_is_organizer": request.user.is_organizer})
 
 
 @login_required
@@ -121,13 +122,18 @@ def event_delete(request, id):
         messages.success(request, "Evento eliminado")
         return redirect("events")
 
-    return render(request, "app/event/event_confirm_delete.html", {"event": event})
+    return redirect("events")   
 
 
 @login_required
 def event_form(request, id=None):
+    if not request.user.is_organizer:
+        messages.error(request, "No tienes permisos")
+        return redirect("events")
+    
     event = get_object_or_404(Event, pk=id) if id else None
     all_categories = Category.objects.all()
+    
     if request.method == 'POST':
         form = EventForm(request.POST, instance=event, user=request.user)
         if form.is_valid():
@@ -135,15 +141,18 @@ def event_form(request, id=None):
             event.organizer = request.user
             event.save()
             form.save_m2m()  
-            return redirect('event_detail', id=event.id)
+            return redirect('events')
+        else:
+            print(form.errors)
     else:
         form = EventForm(instance=event, user=request.user)
 
     return render(request, 'app/event/event_form.html', {
         'form': form,
         'categories': all_categories, 
-        'event': event
-        })
+        'event': event,
+        'user_is_organizer': request.user.is_organizer 
+    })
 
 
 @login_required
