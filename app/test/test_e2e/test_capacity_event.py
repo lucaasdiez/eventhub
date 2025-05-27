@@ -12,7 +12,7 @@ class TicketPurchaseE2ETest(BaseE2ETest):
         
         self.venue = Venue.objects.create(
             name='E2E Venue',
-            capacity=10,
+            capacity=3,
             created_by=self.organizer,
             address='789 Blvd',
             city='E2E City',
@@ -26,7 +26,6 @@ class TicketPurchaseE2ETest(BaseE2ETest):
             scheduled_at=scheduled_at, 
             organizer=self.organizer,
             venue=self.venue,
-            available_tickets=10
         )
 
         self.event.update_availability()
@@ -47,15 +46,17 @@ class TicketPurchaseE2ETest(BaseE2ETest):
         self.page.get_by_placeholder("MM/AA").fill("12/25")
         self.page.get_by_placeholder("Juan Pérez").fill("John Doe")
         self.page.check("#terms")
-        # Intentar comprar 12 tickets
-        self.page.get_by_label("Cantidad").fill("12")
+        # Intentar comprar 4 tickets
+        self.page.get_by_label("Cantidad").fill("4")
         self.page.get_by_role("button", name="Confirmar compra").click()
         
-        # Verificar mensaje de error
-        expect(self.page.get_by_text("Solo quedan 10 entradas disponibles")).to_be_visible()
+        expect(self.page).to_have_url(f"{self.live_server_url}/tickets/new/")
 
-        # Corregir cantidad a 10
-        self.page.get_by_label("Cantidad").fill("10")
+        # Verificar mensaje de error
+        expect(self.page.get_by_text("Solo quedan 3 entradas disponibles")).to_be_visible()
+
+        # Corregir cantidad a 3
+        self.page.get_by_label("Cantidad").fill("3")
         self.page.get_by_role("button", name="Confirmar compra").click()
         
         # Verificar compra exitosa
