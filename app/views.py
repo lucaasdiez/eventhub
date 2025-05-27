@@ -293,13 +293,16 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
         event = form.cleaned_data['event']
         quantity = form.cleaned_data['quantity']
 
-        if event.venue:
-            if event.available_tickets < quantity:
-                messages.error(
-                    self.request, 
-                    f"⚠️ Solo quedan {event.available_tickets} entradas disponibles"
-                )
-                return redirect('ticket_form')
+        if event.available_tickets == 0:
+            messages.error(self.request, "Lo sentimos, las entradas para este evento están agotadas.")
+            return redirect('ticket_form')
+
+        if event.available_tickets < quantity:
+            messages.error(
+                self.request,
+                f"Solo quedan {event.available_tickets} entradas disponibles."
+            )
+            return redirect('ticket_form')
 
         # Cálculo de precio 
         if form.cleaned_data['type'] == 'VIP':

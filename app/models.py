@@ -162,7 +162,7 @@ class Event(models.Model):
         """Actualiza available_tickets según el venue y tickets vendidos."""
         if self.venue:  # Si el evento tiene un venue asignado
             self.available_tickets = self.venue.capacity - self.tickets_sold()
-            self.save()
+            self.save(update_fields=['available_tickets'])
 
 
 
