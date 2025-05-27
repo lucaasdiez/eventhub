@@ -203,13 +203,13 @@ class Ticket(models.Model):
         return True, ""
 
     def save(self, *args, **kwargs):
-        if not self.ticket_code:
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new and not self.ticket_code:
             prefix = 'VIP' if self.type == self.VIP else 'GEN'
-            super().save(*args, **kwargs)
             self.ticket_code = f"{prefix}-{self.pk:04d}"
-            super().save(*args, **kwargs)
-        else:
-            super().save(*args, **kwargs)
+            Ticket.objects.filter(pk=self.pk).update(ticket_code=self.ticket_code)
+
 
     def __str__(self):
         return f"{self.ticket_code} - {self.type}"
