@@ -202,15 +202,37 @@ class Ticket(models.Model):
     price_paid = models.DecimalField(max_digits=10, decimal_places=2) 
     used = models.BooleanField(default=False)
 
+    @classmethod
+    def validate_ticket_purchase(cls, user, event, quantity):
+        """
+        Valida que un usuario no pueda comprar más de 4 entradas por evento.
+        Retorna (es_valido, mensaje_error)
+        """
+        MAX_TICKETS_PER_EVENT = 4
+        tickets_existentes = cls.objects.filter(user=user, event=event).aggregate(
+            total=models.Sum('quantity')
+        )['total'] or 0
+        
+        if tickets_existentes + quantity > MAX_TICKETS_PER_EVENT:
+            disponibles = MAX_TICKETS_PER_EVENT - tickets_existentes
+            return False, f"No puedes comprar más de {MAX_TICKETS_PER_EVENT} entradas por evento. Ya tienes {tickets_existentes} entradas para este evento. Puedes comprar hasta {disponibles} entradas más."
+        
+        return True, ""
+
     def save(self, *args, **kwargs):
-        if not self.ticket_code:
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new and not self.ticket_code:
             prefix = 'VIP' if self.type == self.VIP else 'GEN'
-            super().save(*args, **kwargs)
             self.ticket_code = f"{prefix}-{self.pk:04d}"
+            
+            Ticket.objects.filter(pk=self.pk).update(ticket_code=self.ticket_code)
+
             kwargs['force_insert'] = False
             super().save(*args, **kwargs)
         else:
             super().save(*args, **kwargs)
+
 
     def __str__(self):
         return f"{self.ticket_code} - {self.type}"
