@@ -79,12 +79,12 @@ class TicketPurchaseIntegrationTests(TestCase):
         
         response = self.client.post(reverse('ticket_form'), {
             'event': self.event.id,
-            'quantity': 5,
+            'quantity': 4,
             'type': 'VIP',
-            'price_paid': '1000.00'
         }, follow=True)
         
+
         # Verificar creación del ticket y actualización
         self.assertEqual(Ticket.objects.count(), initial_count + 1)
         self.event.refresh_from_db()
-        self.assertEqual(self.event.available_tickets, 5)
+        self.assertEqual(self.event.available_tickets, 6)
