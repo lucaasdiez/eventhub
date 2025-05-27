@@ -7,15 +7,15 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Eventos</h1>
         <div>
-            <a href="{% url 'lista_favoritos' %}" class="btn btn-outline-warning me-2">
-                <i class="bi bi-star-fill me-1"></i> Mis Favoritos
-            </a>
             {% if request.user.is_organizer %}
-                <a href="{% url 'event_create' %}" class="btn btn-primary">
+                <a href="{% url 'event_create' %}" class="btn btn-primary me-2">
                     <i class="bi bi-plus-circle me-2" aria-hidden="true"></i>
                     Crear Evento
                 </a>
             {% endif %}
+            <a href="{% url 'lista_favoritos' %}" class="btn btn-outline-warning">
+                <i class="bi bi-star-fill me-1"></i> Mis Favoritos
+            </a>
         </div>
     </div>
 
@@ -32,25 +32,42 @@
         <tbody>
             {% for event in events %}
                 <tr>
-                    <td>
-                        {{ event.title }}
-                        {% if event.id in favoritos_ids %}
-                            <span class="text-warning ms-1"><i class="bi bi-star-fill"></i></span>
-                        {% endif %}
-                    </td>
+                    <td>{{ event.title }}</td>
                     <td>{{ event.description|truncatechars:50 }}</td>
                     <td>{{ event.scheduled_at|date:"d M Y, H:i" }}</td>
                     <td>{{ event.organizer.username }}</td>
                     <td>
                         <div class="hstack gap-2">
+                            <!-- Ver Detalle -->
                             <a href="{% url 'event_detail' event.id %}"
                                class="btn btn-sm btn-outline-primary"
                                aria-label="Ver detalle"
                                title="Ver detalle">
                                 <i class="bi bi-eye" aria-hidden="true"></i>
                             </a>
-                            
-                            <!-- Botón de favorito (visible para todos los usuarios) -->
+
+                            {% if request.user == event.organizer %}
+                                <!-- Editar -->
+                                <a href="{% url 'event_edit' event.id %}"
+                                   class="btn btn-sm btn-outline-secondary"
+                                   aria-label="Editar"
+                                   title="Editar">
+                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                </a>
+
+                                <!-- Eliminar -->
+                                <form action="{% url 'event_delete' event.id %}" method="POST" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" 
+                                            class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm('¿Eliminar este evento permanentemente?')"
+                                            title="Eliminar">
+                                        <i class="bi bi-trash" aria-hidden="true"></i>
+                                    </button>
+                                </form>
+                            {% endif %}
+
+                            <!-- Favorito (visible para todos) -->
                             {% if event.id in favoritos_ids %}
                                 <a href="{% url 'eliminar_favorito' event.id %}"
                                    class="btn btn-sm btn-warning"
@@ -63,26 +80,6 @@
                                    title="Añadir a favoritos">
                                     <i class="bi bi-star"></i>
                                 </a>
-                            {% endif %}
-                            
-                            <!-- Botones de edición (solo para organizador) -->
-                            {% if request.user == event.organizer %}
-                                <a href="{% url 'event_edit' event.id %}"
-                                    class="btn btn-sm btn-outline-secondary"
-                                    aria-label="Editar"
-                                    title="Editar">
-                                    <i class="bi bi-pencil" aria-hidden="true"></i>
-                                </a>
-                                
-                                <form action="{% url 'event_delete' event.id %}" method="POST" class="d-inline">
-                                    {% csrf_token %}
-                                    <button type="submit" 
-                                            class="btn btn-sm btn-outline-danger"
-                                            onclick="return confirm('¿Eliminar este evento permanentemente?')"
-                                            title="Eliminar">
-                                        <i class="bi bi-trash" aria-hidden="true"></i>
-                                    </button>
-                                </form>
                             {% endif %}
                         </div>
                     </td>
