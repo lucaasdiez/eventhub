@@ -100,6 +100,7 @@ def event_detail(request, event_id):
     event.update_status()
     comments = Comment.objects.filter(event=event).order_by('-created_at')
     disponibles = (event.venue.capacity if event.venue else 0) - event.tickets_sold
+    es_favorito = request.user.favoritos.filter(pk=event.id).exists()
 
     if request.method == 'POST':
         form = CommentForm(request.POST)
@@ -108,18 +109,17 @@ def event_detail(request, event_id):
             comment.event = event
             comment.user = request.user
             comment.save()
-            return redirect('event_detail', event_id=event.id)  # <-- Aquí está el cambio
+            return redirect('event_detail', event_id=event.id)
     else:
         form = CommentForm()
-
 
     return render(request, 'app/event/event_detail.html', {
         'event': event,
         'comments': comments,
         'form': form,
         'disponibles': max(disponibles, 0),
+        'es_favorito': es_favorito
     })
-
 
 @login_required
 def event_delete(request, id):
@@ -137,12 +137,12 @@ def event_delete(request, id):
 
 
 @login_required
-def event_form(request, id=None):
+def event_form(request, event_id):
     if not request.user.is_organizer:
         messages.error(request, "No tienes permisos")
         return redirect("events")
     
-    event = get_object_or_404(Event, pk=id) if id else None
+    event = get_object_or_404(Event, pk=event_id) if event_id else None
     all_categories = Category.objects.all()
     
     if request.method == 'POST':
@@ -483,7 +483,7 @@ def request_refund(request):
         ticket_code = request.POST.get('ticket_code')
         try:
             ticket = Ticket.objects.get(
-                ticket_code=ticket_code,
+                ticket_code__iexact=ticket_code,
                 user=request.user
             )
         except Ticket.DoesNotExist:
@@ -542,30 +542,6 @@ def lista_favoritos(request):
     favoritos = request.user.favoritos.all().order_by('-scheduled_at')
     return render(request, 'app/event/favoritos/lista.html', {
         'favoritos': favoritos
-    })
-
-@login_required
-def event_detail(request, id):
-    event = get_object_or_404(Event, pk=id)
-    comments = Comment.objects.filter(event=event).order_by('-created_at')
-    es_favorito = request.user.favoritos.filter(pk=event.id).exists()
-
-    if request.method == 'POST':
-        form = CommentForm(request.POST)
-        if form.is_valid():
-            comment = form.save(commit=False)
-            comment.event = event
-            comment.user = request.user
-            comment.save()
-            return redirect('event_detail', id=event.id)
-    else:
-        form = CommentForm()
-
-    return render(request, 'app/event/event_detail.html', {
-        'event': event,
-        'comments': comments,
-        'form': form,
-        'es_favorito': es_favorito  # Nuevo contexto
     })
 
 
