@@ -206,12 +206,16 @@ class Event(models.Model):
     def update_status(self):
         now = timezone.now()
 
-        if self.scheduled_at <= now:
+        scheduled_at_aware = self.scheduled_at
+        if timezone.is_naive(scheduled_at_aware):
+            scheduled_at_aware = timezone.make_aware(self.scheduled_at, timezone.get_current_timezone())
+
+        if scheduled_at_aware <= now:
             self.status = "finalizado"
         elif self.available_tickets <= 0:
             self.status = "agotado"
         elif not self.venue:
-            self.status = "sin lugar"  # Podés ponerle un estado especial si querés manejar eventos sin lugar
+            self.status = "sin lugar"
         else:
             self.status = "activo"
         self.save()
@@ -293,21 +297,23 @@ class Ticket(models.Model):
     used = models.BooleanField(default=False)
 
     @classmethod
-    def validate_ticket_purchase(cls, user, event, quantity):
-        """
-        Valida que un usuario no pueda comprar más de 4 entradas por evento.
-        Retorna (es_valido, mensaje_error)
-        """
+    def validate_ticket_purchase(cls, event, quantity, user):
+        if event.status != "activo":
+            return False, "El evento no está disponible para compra"
+
+        disponibles = event.available_tickets
+        if quantity > disponibles:
+            return False, f"Solo hay {disponibles} entradas disponibles"
+
         MAX_TICKETS_PER_EVENT = 4
         tickets_existentes = cls.objects.filter(user=user, event=event).aggregate(
             total=models.Sum('quantity')
         )['total'] or 0
-        
+
         if tickets_existentes + quantity > MAX_TICKETS_PER_EVENT:
             disponibles = MAX_TICKETS_PER_EVENT - tickets_existentes
             return False, f"No puedes comprar más de {MAX_TICKETS_PER_EVENT} entradas por evento. Ya tienes {tickets_existentes} entradas para este evento. Puedes comprar hasta {disponibles} entradas más."
-        
-        return True, ""
+        return True, None
 
     def save(self, *args, **kwargs):
         if self.pk is None and not self.ticket_code:
@@ -321,20 +327,14 @@ class Ticket(models.Model):
                     self.ticket_code = new_code
                     unique_code_generated = True
         super().save(*args, **kwargs)
+        self.event.tickets_sold = self.event.entradas_vendidas()
+        self.event.update_availability()
+        self.event.update_status()
 
 
 
     def __str__(self):
         return f"{self.ticket_code} - {self.type}"
-
-    @classmethod
-    def validate_ticket_purchase(cls, event, quantity, user):
-        if event.status != "activo":
-            return False, "El evento no está disponible para compra"
-        disponibles = event.available_tickets
-        if quantity > disponibles:
-            return False, f"Solo hay {disponibles} entradas disponibles"
-        return True, None
 
 
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from django.test import TestCase
 
@@ -17,16 +17,18 @@ class TicketValidationTest(TestCase):
             description="Descripción de prueba",
             scheduled_at=datetime.now() + timedelta(days=5),
             organizer=self.user,
-            venue=self.venue
+            venue=self.venue,
+            status="activo",
+            available_tickets=100
         )
 
     def test_cantidad_valida(self):
-        valido, mensaje = Ticket.validate_ticket_purchase(self.user, self.event, 3)
+        valido, mensaje = Ticket.validate_ticket_purchase(self.event, 3, self.user)
         self.assertTrue(valido)
-        self.assertEqual(mensaje, "")
+        self.assertEqual(mensaje, None)
 
     def test_exceso_de_tickets(self):
         Ticket.objects.create(user=self.user, event=self.event, quantity=3, type="GENERAL", price_paid=150)
-        valido, mensaje = Ticket.validate_ticket_purchase(self.user, self.event, 2)
+        valido, mensaje = Ticket.validate_ticket_purchase(self.event, 2, self.user) 
         self.assertFalse(valido)
         self.assertIn("No puedes comprar más de", mensaje)
