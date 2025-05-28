@@ -98,6 +98,41 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+    @classmethod
+    def validate(cls, name):
+        errors = {}
+
+        if not name or name.strip() == "":
+            errors["name"] = "El nombre es requerido."
+
+        elif cls.objects.filter(name__iexact=name.strip()).exists():
+            errors["name"] = "Ya existe una categoría con este nombre."
+
+        return errors
+
+    @classmethod
+    def new(cls, name, description=None):
+        errors = cls.validate(name)
+
+        if errors:
+            return False, errors
+
+        category = cls.objects.create(
+            name=name.strip(),
+            description=description.strip() if description else None
+        )
+        return category, None
+
+    def update(self, name, description=None):
+        if name and name.strip() != self.name:
+            if Category.objects.exclude(pk=self.pk).filter(name__iexact=name.strip()).exists():
+                raise ValidationError("Ya existe otra categoría con ese nombre.")
+            self.name = name.strip()
+
+        if description is not None:
+            self.description = description.strip()
+
+        self.save()
     
     
 class Event(models.Model):
@@ -164,6 +199,22 @@ class Event(models.Model):
             self.available_tickets = self.venue.capacity - self.tickets_sold()
             self.save(update_fields=['available_tickets'])
 
+
+    def entradas_vendidas(self):
+        return sum(ticket.quantity for ticket in self.tickets.all())
+
+    def porcentaje_ocupacion(self):
+        if not self.venue or self.venue.capacity == 0:
+            return 0
+        return (self.entradas_vendidas() / self.venue.capacity) * 100
+
+    def estado_demanda(self):
+        porcentaje = self.porcentaje_ocupacion()
+        if porcentaje > 90:
+            return "Alta demanda"
+        elif porcentaje < 10:
+            return "Baja demanda"
+        return ""
 
 
 
