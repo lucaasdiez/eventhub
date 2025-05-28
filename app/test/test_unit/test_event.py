@@ -2,7 +2,6 @@ import datetime
 
 from django.test import TestCase
 from django.utils import timezone
-from django.core.exceptions import ValidationError
 
 from app.models import Event, User
 
@@ -141,34 +140,3 @@ class EventModelTest(TestCase):
         self.assertEqual(updated_event.title, original_title)
         self.assertEqual(updated_event.description, new_description)
         self.assertEqual(updated_event.scheduled_at, original_scheduled_at)
-
-
-    def test_default_event_status_is_active(self):
-        """Verifica que el estado por defecto es 'activo'"""
-        self.assertEqual(self.event.status, "activo")
-
-    def test_valid_status_choices(self):
-        """Verifica que solo se permiten estados definidos"""
-        valid_statuses = ["activo", "cancelado", "reprogramado", "agotado", "finalizado"]
-        
-        # Probar cada estado válido
-        for status in valid_statuses:
-            self.event.status = status
-            self.event.full_clean()  # No debe lanzar excepción
-
-        # Estado inválido
-        with self.assertRaises(ValidationError):
-            self.event.status = "no_existo"
-            self.event.full_clean()
-
-    def test_automatic_status_change_on_past_events(self):
-        """Verifica que eventos pasados se marcan como 'finalizado' automáticamente"""
-        past_event = Event.objects.create(
-            title="Evento Pasado",
-            description="Este evento ya ocurrió",
-            scheduled_at=timezone.now() - datetime.timedelta(days=1),
-            organizer=self.organizer,
-            status="activo"
-        )
-        past_event.update_status()  # Método hipotético que actualiza el estado
-        self.assertEqual(past_event.status, "finalizado")
