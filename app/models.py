@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+import uuid
 
 
 from django.contrib.auth.models import AbstractUser
@@ -155,7 +156,6 @@ class Event(models.Model):
     venue = models.ForeignKey(Venue, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
     premium = models.BooleanField(default=False, verbose_name="Evento Premium") 
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='active') 
     tickets_sold = models.PositiveIntegerField(default=0)
@@ -203,18 +203,12 @@ class Event(models.Model):
         self.save()
 
     
-    @property
-    def available_tickets(self):
-        if self.venue:  # Verifica que venue no sea None
-            return self.venue.capacity - self.tickets_sold
-        return 0  # Si no hay venue, no hay capacidad, por lo tanto disponibles = 0
-
     def update_status(self):
         now = timezone.now()
 
         if self.scheduled_at <= now:
             self.status = "finalizado"
-        elif self.venue and self.tickets_sold >= self.venue.capacity:
+        elif self.available_tickets <= 0:
             self.status = "agotado"
         elif not self.venue:
             self.status = "sin lugar"  # Podés ponerle un estado especial si querés manejar eventos sin lugar
@@ -222,15 +216,11 @@ class Event(models.Model):
             self.status = "activo"
         self.save()
 
-        
-    def tickets_sold(self):
-        """Total de entradas vendidas para este evento."""
-        return self.tickets.aggregate(total=Sum('quantity'))['total'] or 0  
     
     def update_availability(self):
         """Actualiza available_tickets según el venue y tickets vendidos."""
         if self.venue:  # Si el evento tiene un venue asignado
-            self.available_tickets = self.venue.capacity - self.tickets_sold()
+            self.available_tickets = self.venue.capacity - self.tickets_sold
             self.save(update_fields=['available_tickets'])
 
 
@@ -320,21 +310,17 @@ class Ticket(models.Model):
         return True, ""
 
     def save(self, *args, **kwargs):
-        is_new = self.pk is None
-        super().save(*args, **kwargs)
-
-
-        if is_new and not self.ticket_code:
-            count = Ticket.objects.filter(type=self.type).count()
+        if self.pk is None and not self.ticket_code:
             prefix = 'VIP' if self.type == self.VIP else 'GEN'
-            self.ticket_code = f"{prefix}-{self.pk:04d}"
-            
-            Ticket.objects.filter(pk=self.pk).update(ticket_code=self.ticket_code)
+            unique_code_generated = False
 
-            kwargs['force_insert'] = False
-            super().save(*args, **kwargs)
-        else:
-            super().save(*args, **kwargs)
+            while not unique_code_generated:
+                unique_id = uuid.uuid4().hex[:8]  # Genera un ID único de 8 caracteres
+                new_code = f"{prefix}-{unique_id}"
+                if not Ticket.objects.filter(ticket_code=new_code).exists():
+                    self.ticket_code = new_code
+                    unique_code_generated = True
+        super().save(*args, **kwargs)
 
 
 
@@ -345,7 +331,7 @@ class Ticket(models.Model):
     def validate_ticket_purchase(cls, event, quantity, user):
         if event.status != "activo":
             return False, "El evento no está disponible para compra"
-        disponibles = event.venue.capacity - event.tickets_sold
+        disponibles = event.available_tickets
         if quantity > disponibles:
             return False, f"Solo hay {disponibles} entradas disponibles"
         return True, None
@@ -405,9 +391,7 @@ class RefundRequest(models.Model):
             return False, "Pasaron 30 días del evento (premium)"
             
         return True, "Reembolso permitido"
-
+    
 @receiver([post_save, post_delete], sender=Ticket)
 def update_event_availability(sender, instance, **kwargs):
-    """Actualiza disponibilidad al crear/eliminar tickets."""
     instance.event.update_availability()
-
