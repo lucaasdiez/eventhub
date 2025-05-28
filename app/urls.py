@@ -29,6 +29,9 @@ urlpatterns = [
 
     path('comment/', views.comentarios_organizador, name='comentarios_organizador'),
     path('comentarios/eliminar/<int:comentario_id>/', views.eliminar_comentario, name='eliminar_comentario'),
+    path("comentarios/", views.comentarios_organizador, name="comentarios_organizador"),
+    path('comentarios/editar/<int:comentario_id>/', views.editar_comentario, name='editar_comentario'),
+
 
     path('tickets/', TicketListView.as_view(), name='ticket_list'),
     path('tickets/new/', TicketCreateView.as_view(), name='ticket_form'),

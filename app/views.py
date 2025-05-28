@@ -10,10 +10,10 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import generic
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
-
+from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 from .forms import CategoryForm, CommentForm, EventForm, RefundRequestForm
 from .models import Category, Comment, Event, RefundRequest, Ticket, User, Venue
-
+from django.http import JsonResponse
 
 def register(request):
     if request.method == "POST":
@@ -76,15 +76,6 @@ def home(request):
     }
     return render(request, "home.html", context)
 
-
-# @login_required
-# def events(request):
-#     queryset = Event.objects.all().order_by("scheduled_at")
-#     if not request.user.is_organizer:
-#         queryset = queryset.filter(scheduled_at__gte=timezone.now())
-#     return render(request, "app/event/events.html", {"events": queryset})
-
-
 def eventos(request):
     events = Event.objects.all()
     favorite_events = request.user.favorites.all() if request.user.is_authenticated else []
@@ -92,30 +83,6 @@ def eventos(request):
         "events": events,
         "favorite_events": favorite_events,
     })
-
-
-# @login_required
-# def event_detail(request, id):
-#     event = get_object_or_404(Event, pk=id)
-#     comments = Comment.objects.filter(event=event).order_by('-created_at')
-
-#     if request.method == 'POST':
-#         form = CommentForm(request.POST)
-#         if form.is_valid():
-#             comment = form.save(commit=False)
-#             comment.event = event
-#             comment.user = request.user
-#             comment.save()
-#             # redirige luego de guardar
-#             return redirect('event_detail', id=event.id)
-#     else:
-#         form = CommentForm()
-
-#     return render(request, 'app/event/event_detail.html', {
-#         'event': event,
-#         'comments': comments,
-#         'form': form,
-#     })
 
 
 @login_required
@@ -248,21 +215,53 @@ class CategoryDeleteView(generic.DeleteView):
 @login_required
 def comentarios_organizador(request):
     # Comentarios solo de eventos que creó el organizador actual
-    comentarios = Comment.objects.filter(
-        event__organizer=request.user).select_related('event', 'user')
+    comentarios = Comment.objects.all()
 
     return render(request, 'app/comments/comentarios_organizador.html', {
         'comentarios': comentarios
     })
 
 
+def editar_comentario(request, comentario_id):
+    comentario = get_object_or_404(Comment, pk=comentario_id)
+
+    if request.method == 'POST':
+        if request.user != comentario.user:
+            return HttpResponseForbidden()
+
+        comentario.content = request.POST.get('content')
+        comentario.save()
+        return redirect('comentarios_organizador')
+
+
+    
 @login_required
 def eliminar_comentario(request, comentario_id):
-    comentario = get_object_or_404(
-        Comment, id=comentario_id, event__organizer=request.user
-    )
-    comentario.delete()
-    return redirect('comentarios_organizador')
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    comentario = get_object_or_404(Comment, pk=comentario_id)
+    user = request.user
+
+    es_dueño = (comentario.user == user)
+
+    # Verificamos si el usuario es organizador Y si es dueño del evento asociado al comentario
+    try:
+        es_organizador_y_dueño_evento = (
+            user.is_organizer and comentario.event.organizer == user
+        )
+    except AttributeError:
+        es_organizador_y_dueño_evento = False  # Si no se puede acceder al organizer, no tiene permiso
+
+    if es_dueño or es_organizador_y_dueño_evento:
+        comentario.delete()
+        messages.success(request, "Comentario eliminado exitosamente.")
+        return redirect('comentarios_organizador')
+    else:
+        return HttpResponseForbidden("No tenés permiso para eliminar este comentario.")
+
+
+
 
 class TicketListView(ListView):
     model = Ticket
