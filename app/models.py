@@ -209,13 +209,12 @@ class Event(models.Model):
         scheduled_at_aware = self.scheduled_at
         if timezone.is_naive(scheduled_at_aware):
             scheduled_at_aware = timezone.make_aware(self.scheduled_at, timezone.get_current_timezone())
-
         if scheduled_at_aware <= now:
             self.status = "finalizado"
-        elif self.available_tickets <= 0:
-            self.status = "agotado"
         elif not self.venue:
             self.status = "sin lugar"
+        elif self.available_tickets <= 0:
+            self.status = "agotado"
         else:
             self.status = "activo"
         self.save()
