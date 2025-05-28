@@ -95,8 +95,8 @@ def event(request):
 
 
 @login_required
-def event_detail(request, event_id):
-    event = get_object_or_404(Event, id=event_id)
+def event_detail(request, id):
+    event = get_object_or_404(Event, id=id)
     event.update_status()
     comments = Comment.objects.filter(event=event).order_by('-created_at')
     disponibles = (event.venue.capacity if event.venue else 0) - event.tickets_sold
@@ -109,7 +109,7 @@ def event_detail(request, event_id):
             comment.event = event
             comment.user = request.user
             comment.save()
-            return redirect('event_detail', event_id=event.id)
+            return redirect('event_detail', id=event.id)
     else:
         form = CommentForm()
 
@@ -142,7 +142,7 @@ def event_form(request, event_id=None):
         messages.error(request, "No tienes permisos")
         return redirect("events")
     
-    event = get_object_or_404(Event, pk=event_id) if event_id else None
+    event = get_object_or_404(Event, pk=id) if id else None
     all_categories = Category.objects.all()
     
     if request.method == 'POST':
@@ -152,11 +152,7 @@ def event_form(request, event_id=None):
             event.organizer = request.user
             event.save()
             form.save_m2m()  
-
             return redirect('events')
-
-        else:
-            print(form.errors)
     else:
         form = EventForm(instance=event, user=request.user)
 
