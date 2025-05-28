@@ -4,6 +4,9 @@ from decimal import Decimal
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import QuerySet, Sum
+from django.db.models.signals import post_delete, post_save
+from django.dispatch import receiver
 from django.utils import timezone
 
 
@@ -96,6 +99,41 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+    @classmethod
+    def validate(cls, name):
+        errors = {}
+
+        if not name or name.strip() == "":
+            errors["name"] = "El nombre es requerido."
+
+        elif cls.objects.filter(name__iexact=name.strip()).exists():
+            errors["name"] = "Ya existe una categoría con este nombre."
+
+        return errors
+
+    @classmethod
+    def new(cls, name, description=None):
+        errors = cls.validate(name)
+
+        if errors:
+            return False, errors
+
+        category = cls.objects.create(
+            name=name.strip(),
+            description=description.strip() if description else None
+        )
+        return category, None
+
+    def update(self, name, description=None):
+        if name and name.strip() != self.name:
+            if Category.objects.exclude(pk=self.pk).filter(name__iexact=name.strip()).exists():
+                raise ValidationError("Ya existe otra categoría con ese nombre.")
+            self.name = name.strip()
+
+        if description is not None:
+            self.description = description.strip()
+
+        self.save()
     
     
 class Event(models.Model):
@@ -110,6 +148,8 @@ class Event(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     premium = models.BooleanField(default=False, verbose_name="Evento Premium")  
+    available_tickets = models.PositiveIntegerField(default=0)
+    tickets: QuerySet['Ticket']
 
     def __str__(self):
         return self.title
@@ -133,12 +173,15 @@ class Event(models.Model):
         if len(errors.keys()) > 0:
             return False, errors
 
-        return Event.objects.create(
+        event= Event.objects.create(
             title=title,
             description=description,
             scheduled_at=scheduled_at,
             organizer=organizer,
-        ), None
+        )
+        if event.venue:
+            event.update_availability()
+        return event, None
 
     def update(self, title, description, scheduled_at, organizer):
         self.title = title or self.title
@@ -146,6 +189,33 @@ class Event(models.Model):
         self.scheduled_at = scheduled_at or self.scheduled_at
         self.organizer = organizer or self.organizer
         self.save()
+        
+    def tickets_sold(self):
+        """Total de entradas vendidas para este evento."""
+        return self.tickets.aggregate(total=Sum('quantity'))['total'] or 0  
+    
+    def update_availability(self):
+        """Actualiza available_tickets según el venue y tickets vendidos."""
+        if self.venue:  # Si el evento tiene un venue asignado
+            self.available_tickets = self.venue.capacity - self.tickets_sold()
+            self.save(update_fields=['available_tickets'])
+
+
+    def entradas_vendidas(self):
+        return sum(ticket.quantity for ticket in self.tickets.all())
+
+    def porcentaje_ocupacion(self):
+        if not self.venue or self.venue.capacity == 0:
+            return 0
+        return (self.entradas_vendidas() / self.venue.capacity) * 100
+
+    def estado_demanda(self):
+        porcentaje = self.porcentaje_ocupacion()
+        if porcentaje > 90:
+            return "Alta demanda"
+        elif porcentaje < 10:
+            return "Baja demanda"
+        return ""
 
         
 class Favorito(models.Model):
@@ -165,7 +235,7 @@ class Favorito(models.Model):
 
 class Comment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='comments')
     title = models.CharField(max_length=120)
     content =models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -198,14 +268,37 @@ class Ticket(models.Model):
     price_paid = models.DecimalField(max_digits=10, decimal_places=2) 
     used = models.BooleanField(default=False)
 
+    @classmethod
+    def validate_ticket_purchase(cls, user, event, quantity):
+        """
+        Valida que un usuario no pueda comprar más de 4 entradas por evento.
+        Retorna (es_valido, mensaje_error)
+        """
+        MAX_TICKETS_PER_EVENT = 4
+        tickets_existentes = cls.objects.filter(user=user, event=event).aggregate(
+            total=models.Sum('quantity')
+        )['total'] or 0
+        
+        if tickets_existentes + quantity > MAX_TICKETS_PER_EVENT:
+            disponibles = MAX_TICKETS_PER_EVENT - tickets_existentes
+            return False, f"No puedes comprar más de {MAX_TICKETS_PER_EVENT} entradas por evento. Ya tienes {tickets_existentes} entradas para este evento. Puedes comprar hasta {disponibles} entradas más."
+        
+        return True, ""
+
     def save(self, *args, **kwargs):
-        if not self.ticket_code:
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new and not self.ticket_code:
             prefix = 'VIP' if self.type == self.VIP else 'GEN'
-            super().save(*args, **kwargs)
             self.ticket_code = f"{prefix}-{self.pk:04d}"
+            
+            Ticket.objects.filter(pk=self.pk).update(ticket_code=self.ticket_code)
+
+            kwargs['force_insert'] = False
             super().save(*args, **kwargs)
         else:
             super().save(*args, **kwargs)
+
 
     def __str__(self):
         return f"{self.ticket_code} - {self.type}"
@@ -265,4 +358,9 @@ class RefundRequest(models.Model):
             return False, "Pasaron 30 días del evento (premium)"
             
         return True, "Reembolso permitido"
-    
+
+@receiver([post_save, post_delete], sender=Ticket)
+def update_event_availability(sender, instance, **kwargs):
+    """Actualiza disponibilidad al crear/eliminar tickets."""
+    instance.event.update_availability()
+

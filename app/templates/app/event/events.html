@@ -34,7 +34,7 @@
                 <tr>
                     <td>{{ event.title }}</td>
                     <td>{{ event.description|truncatechars:50 }}</td>
-                    <td>{{ event.scheduled_at|date:"d M Y, H:i" }}</td>
+                    <td>{{ event.scheduled_at|date:"j N Y, H:i" }}</td>
                     <td>{{ event.organizer.username }}</td>
                     <td>
                         <div class="hstack gap-2">
