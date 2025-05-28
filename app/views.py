@@ -122,12 +122,12 @@ def event_detail(request, id):
     })
 
 @login_required
-def event_delete(request, event_id):
+def event_delete(request, id):
     if not request.user.is_organizer:
         messages.error(request, "No tienes permisos")
         return redirect("events")
 
-    event = get_object_or_404(Event, pk=event_id)
+    event = get_object_or_404(Event, pk=id)
     if request.method == "POST":
         event.delete()
         messages.success(request, "Evento eliminado")
@@ -137,7 +137,7 @@ def event_delete(request, event_id):
 
 
 @login_required
-def event_form(request, event_id=None):
+def event_form(request, id=None):
     if not request.user.is_organizer:
         messages.error(request, "No tienes permisos")
         return redirect("events")
