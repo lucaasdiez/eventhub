@@ -52,6 +52,18 @@ class EventForm(forms.ModelForm):
             raise ValidationError("La fecha/hora debe ser futura.")
         return scheduled_at
     
+    def save(self, commit=True):
+        event = super().save(commit=False)
+        event.organizer = self.user
+        if commit:
+            event.save()
+            self.save_m2m() 
+        if event.venue:
+            event.available_tickets = event.venue.capacity
+            event.save()
+
+        return event
+    
 class CategoryForm(forms.ModelForm):
     class Meta:
         model = Category

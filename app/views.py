@@ -11,12 +11,16 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import generic
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+
 from django.core.exceptions import ValidationError
 from django.urls import reverse
 
+
+from django.http import HttpResponseForbidden, HttpResponseNotAllowed
+
 from .forms import CategoryForm, CommentForm, EventForm, RefundRequestForm
 from .models import Category, Comment, Event, RefundRequest, Ticket, User, Venue
-
+from django.http import JsonResponse
 
 def register(request):
     if request.method == "POST":
@@ -83,9 +87,11 @@ def home(request):
 @login_required
 def events(request):
     queryset = Event.objects.all().order_by("scheduled_at")
+    favorite_events = request.user.favorites.all() if request.user.is_authenticated else []
     if not request.user.is_organizer:
         queryset = queryset.filter(scheduled_at__gte=timezone.now())
-    return render(request, "app/event/events.html", {"events": queryset})
+    return render(request, "app/event/events.html", {"events": queryset,
+        "user_is_organizer": request.user.is_organizer, "favorite_events": favorite_events})
 
 
 @login_required
@@ -127,13 +133,18 @@ def event_delete(request, id):
         messages.success(request, "Evento eliminado")
         return redirect("events")
 
-    return render(request, "app/event/event_confirm_delete.html", {"event": event})
+    return redirect("events")   
 
 
 @login_required
 def event_form(request, id=None):
+    if not request.user.is_organizer:
+        messages.error(request, "No tienes permisos")
+        return redirect("events")
+    
     event = get_object_or_404(Event, pk=id) if id else None
     all_categories = Category.objects.all()
+    
     if request.method == 'POST':
         form = EventForm(request.POST, instance=event, user=request.user)
         if form.is_valid():
@@ -141,7 +152,9 @@ def event_form(request, id=None):
             event.organizer = request.user
             event.save()
             form.save_m2m()  
-            return redirect('event')
+
+            return redirect('events')
+
         else:
             print(form.errors)
     else:
@@ -150,8 +163,9 @@ def event_form(request, id=None):
     return render(request, 'app/event/event_form.html', {
         'form': form,
         'categories': all_categories, 
-        'event': event
-        })
+        'event': event,
+        'user_is_organizer': request.user.is_organizer 
+    })
 
 
 @login_required
@@ -247,21 +261,53 @@ class CategoryDeleteView(generic.DeleteView):
 @login_required
 def comentarios_organizador(request):
     # Comentarios solo de eventos que creó el organizador actual
-    comentarios = Comment.objects.filter(
-        event__organizer=request.user).select_related('event', 'user')
+    comentarios = Comment.objects.all()
 
     return render(request, 'app/comments/comentarios_organizador.html', {
         'comentarios': comentarios
     })
 
 
+def editar_comentario(request, comentario_id):
+    comentario = get_object_or_404(Comment, pk=comentario_id)
+
+    if request.method == 'POST':
+        if request.user != comentario.user:
+            return HttpResponseForbidden()
+
+        comentario.content = request.POST.get('content')
+        comentario.save()
+        return redirect('comentarios_organizador')
+
+
+    
 @login_required
 def eliminar_comentario(request, comentario_id):
-    comentario = get_object_or_404(
-        Comment, id=comentario_id, event__organizer=request.user
-    )
-    comentario.delete()
-    return redirect('comentarios_organizador')
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    comentario = get_object_or_404(Comment, pk=comentario_id)
+    user = request.user
+
+    es_dueño = (comentario.user == user)
+
+    # Verificamos si el usuario es organizador Y si es dueño del evento asociado al comentario
+    try:
+        es_organizador_y_dueño_evento = (
+            user.is_organizer and comentario.event.organizer == user
+        )
+    except AttributeError:
+        es_organizador_y_dueño_evento = False  # Si no se puede acceder al organizer, no tiene permiso
+
+    if es_dueño or es_organizador_y_dueño_evento:
+        comentario.delete()
+        messages.success(request, "Comentario eliminado exitosamente.")
+        return redirect('comentarios_organizador')
+    else:
+        return HttpResponseForbidden("No tenés permiso para eliminar este comentario.")
+
+
+
 
 class TicketListView(ListView):
     model = Ticket
@@ -312,11 +358,17 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
         )
         
         if not is_valid:
-            form.add_error(None, error_msg or "Error desconocido")
+
+            form.add_error(None, error_msg)
             return self.form_invalid(form)
             
+        # Calcular precio según el tipo
         event = form.cleaned_data['event']
         quantity = form.cleaned_data['quantity']
+
+        if event.available_tickets == 0:
+            messages.error(self.request, "Lo sentimos, las entradas para este evento están agotadas.")
+            return redirect('ticket_form')
 
         if event.available_tickets < quantity:
             messages.error(
@@ -325,6 +377,8 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
             )
             return redirect('ticket_form')
 
+
+        # Cálculo de precio 
         if form.cleaned_data['type'] == 'VIP':
             precio_unitario = 100.00
         else:
@@ -334,12 +388,15 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
         form.instance.price_paid = precio_unitario * quantity
         
         response = super().form_valid(form)
+
         
         # Actualizar tickets vendidos y estado del evento
         event.tickets_sold += quantity
         event.save()
         event.update_status()  # Método existente en el modelo Event
-        
+
+        event.update_availability() 
+
         return response
 
 class TicketUpdateView(LoginRequiredMixin, UpdateView):
@@ -453,4 +510,75 @@ def request_refund(request):
     return render(request, 'app/refunds/request.html', {
         'form': form,
         'policy_message': "Puedes solicitar reembolsos hasta 48 horas antes del evento."
+    })
+
+
+
+
+
+@login_required
+def agregar_favorito(request, event_id):
+    evento = get_object_or_404(Event, pk=event_id)
+    
+    
+    if not request.user.favoritos.filter(pk=evento.id).exists():
+        request.user.favoritos.add(evento)
+        messages.success(request, f"'{evento.title}' añadido a favoritos")
+    else:
+        messages.info(request, f"'{evento.title}' ya está en tus favoritos")
+    
+    
+    return redirect(request.META.get('HTTP_REFERER', 'lista_favoritos'))
+
+@login_required
+def eliminar_favorito(request, event_id):
+    evento = get_object_or_404(Event, pk=event_id)
+    request.user.favoritos.remove(evento)
+    messages.success(request, f"'{evento.title}' eliminado de favoritos")
+    return redirect(request.META.get('HTTP_REFERER', 'lista_favoritos'))
+
+@login_required
+def lista_favoritos(request):
+    favoritos = request.user.favoritos.all().order_by('-scheduled_at')
+    return render(request, 'app/event/favoritos/lista.html', {
+        'favoritos': favoritos
+    })
+
+@login_required
+def event_detail(request, id):
+    event = get_object_or_404(Event, pk=id)
+    comments = Comment.objects.filter(event=event).order_by('-created_at')
+    es_favorito = request.user.favoritos.filter(pk=event.id).exists()
+
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.event = event
+            comment.user = request.user
+            comment.save()
+            return redirect('event_detail', id=event.id)
+    else:
+        form = CommentForm()
+
+    return render(request, 'app/event/event_detail.html', {
+        'event': event,
+        'comments': comments,
+        'form': form,
+        'es_favorito': es_favorito  # Nuevo contexto
+    })
+
+
+@login_required
+def events(request):
+    queryset = Event.objects.all().order_by("scheduled_at")
+    if not request.user.is_organizer:
+        queryset = queryset.filter(scheduled_at__gte=timezone.now())
+    
+    # Obtener IDs de eventos favoritos para marcar en template
+    favoritos_ids = request.user.favoritos.values_list('id', flat=True)
+    
+    return render(request, "app/event/events.html", {
+        "events": queryset,
+        "favoritos_ids": favoritos_ids
     })

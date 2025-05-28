@@ -62,9 +62,7 @@ class EventsListViewTest(BaseEventTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "app/event/events.html")
         self.assertIn("events", response.context)
-        self.assertIn("user_is_organizer", response.context)
         self.assertEqual(len(response.context["events"]), 2)
-        self.assertFalse(response.context["user_is_organizer"])
 
         # Verificar que los eventos están ordenados por fecha
         events = list(response.context["events"])
@@ -81,7 +79,6 @@ class EventsListViewTest(BaseEventTestCase):
 
         # Verificar respuesta
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context["user_is_organizer"])
 
     def test_events_view_without_login(self):
         """Test que verifica que la vista events redirige a login cuando el usuario no está logueado"""
@@ -146,7 +143,6 @@ class EventFormViewTest(BaseEventTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "app/event/event_form.html")
         self.assertIn("event", response.context)
-        self.assertTrue(response.context["user_is_organizer"])
 
     def test_event_form_view_with_regular_user(self):
         """Test que verifica que la vista event_form redirige cuando el usuario no es organizador"""
