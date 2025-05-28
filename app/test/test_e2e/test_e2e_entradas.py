@@ -8,7 +8,7 @@ class EventHubLoginTest(TestCase):
 
     def test_login_redirects_to_events(self):
         login_url = reverse('login')  # o la URL que uses para login, puede ser '/accounts/login/'
-        events_url = '/events/'       # o el nombre del path que quieras verificar
+        home_url = '/'       # o el nombre del path que quieras verificar
 
         # Hacer POST al login con las credenciales
         response = self.client.post(login_url, {
@@ -16,5 +16,5 @@ class EventHubLoginTest(TestCase):
             'password': 'contraseña_test',
         })
 
-        # Verificar que redirige a /events/
-        self.assertRedirects(response, events_url)
+        # Verificar que redirige a /
+        self.assertRedirects(response, home_url)
