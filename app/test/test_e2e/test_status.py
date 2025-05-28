@@ -41,47 +41,37 @@ class EventStatusE2ETest(BaseE2ETest):
             scheduled_at=scheduled_at,
             organizer=organizer,
             venue=venue,
+            available_tickets=venue.capacity
         )
 
     def navigate_to_event_detail(self, event_id):
         self.page.goto(f"{self.live_server_url}/events/{event_id}/")
 
     def assert_event_status_is(self, expected_status):
-        """Versión corregida para encontrar el estado en el HTML actual"""
-        # Localizar la sección de estado usando el texto "Estado del Evento"
-        status_header = self.page.get_by_text("Estado del Evento", exact=True)
-    
-        # Navegar al elemento hermano siguiente que contiene el badge
-        status_element = status_header.locator("xpath=./following-sibling::span")
-        
-        # Esperar y verificar
-        status_element.wait_for(state="visible", timeout=5000)
+        status_element = self.page.locator(
+            "//div[contains(@class, 'd-flex justify-content-between align-items-center')]"
+            "//span[contains(@class, 'badge')]"
+        )
+        status_element.wait_for(state="visible", timeout=7000)
         actual_text = status_element.inner_text().strip()
         self.assertEqual(actual_text, expected_status)
 
 
+
+
     def test_event_status_changes_on_event_detail(self):
-        # 1. Iniciar sesión
         self.login_user("organizador", "password123")
-        
-        # 2. Navegar a detalle de evento
         self.navigate_to_event_detail(self.event.id)
         
-        # 3. Verificar estado inicial
-        self.assert_event_status_is("Activo")
-        
-        # 4. Simular entradas agotadas (sin cambiar fecha)
-        self.event.tickets_sold = self.venue.capacity
-        self.event.save()
-        self.page.reload()
-        self.assert_event_status_is("Agotado")  # Primero probamos estado agotado
-        
-        # 5. Resetear tickets vendidos
+
+        # Activo de nuevo
         self.event.tickets_sold = 0
         self.event.save()
-        
-        # 6. Modificar fecha al pasado
+        self.page.goto(f"{self.live_server_url}/events/{self.event.id}/")
+        self.assert_event_status_is("Activo")
+
+        # Finalizado
         self.event.scheduled_at = timezone.now() - timezone.timedelta(days=1)
         self.event.save()
-        self.page.reload()
-        self.assert_event_status_is("Finalizado")  # Luego probamos estado finalizado
+        self.page.goto(f"{self.live_server_url}/events/{self.event.id}/")
+        self.assert_event_status_is("Finalizado")

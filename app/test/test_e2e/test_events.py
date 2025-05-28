@@ -98,7 +98,8 @@ class EventBaseTest(BaseE2ETest):
     def _table_has_correct_actions(self, user_type):
         """Método auxiliar para verificar que las acciones son correctas según el tipo de usuario"""
         row0 = self.page.locator("table tbody tr").nth(0)
-        actions_column = row0.locator("td").nth(4)
+        actions_column = row0.locator("td").nth(5)
+
 
         detail_button = actions_column.get_by_role("link", name="Ver detalle")
         edit_button = actions_column.get_by_role("link", name="Editar")
