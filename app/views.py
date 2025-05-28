@@ -351,17 +351,6 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
         return context
 
     def form_valid(self, form):
-        is_valid, error_msg = Ticket.validate_ticket_purchase(
-            user=self.request.user,
-            event=form.cleaned_data['event'],
-            quantity=form.cleaned_data['quantity']
-        )
-        
-        if not is_valid:
-
-            form.add_error(None, error_msg)
-            return self.form_invalid(form)
-            
         # Calcular precio según el tipo
         event = form.cleaned_data['event']
         quantity = form.cleaned_data['quantity']
@@ -370,12 +359,21 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
             messages.error(self.request, "Lo sentimos, las entradas para este evento están agotadas.")
             return redirect('ticket_form')
 
-        if event.available_tickets < quantity:
-            messages.error(
-                self.request,
-                f"Solo quedan {event.available_tickets} entradas disponibles."
-            )
-            return redirect('ticket_form')
+        if quantity > event.available_tickets:
+            form.add_error('quantity', f"Solo quedan {event.available_tickets} entradas disponibles.")
+            return self.form_invalid(form)
+
+        is_valid, error_msgs = Ticket.validate_ticket_purchase(
+            user=self.request.user,
+            event=form.cleaned_data['event'],
+            quantity=form.cleaned_data['quantity']
+        )
+        
+        if not is_valid:
+            for error in error_msgs:
+                form.add_error('quantity', error) 
+            return self.form_invalid(form)
+            
 
 
         # Cálculo de precio 
