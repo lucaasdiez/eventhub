@@ -11,6 +11,7 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from django.db import models, transaction
+from django.core.validators import MinValueValidator
 
 class User(AbstractUser):
     is_organizer = models.BooleanField(default=False)
@@ -290,7 +291,12 @@ class Ticket(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='tickets')
     buy_date = models.DateField(auto_now_add=True)
     ticket_code = models.CharField(max_length=50, unique=True, editable=False)
-    quantity = models.PositiveIntegerField(default=1)
+    quantity = models.PositiveIntegerField(default=1,
+            validators=[
+                MinValueValidator(1, message="El minimo de compra es de 1 ticket."),
+            ]                              
+                                           
+                                           )
     type = models.CharField(max_length=10, choices=TYPE_CHOICES, default=GENERAL)
     price_paid = models.DecimalField(max_digits=10, decimal_places=2) 
     used = models.BooleanField(default=False)
