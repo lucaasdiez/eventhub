@@ -47,42 +47,41 @@ class EventStatusE2ETest(BaseE2ETest):
         self.page.goto(f"{self.live_server_url}/events/{event_id}/")
 
     def assert_event_status_is(self, expected_status):
-        """Asegura que el estado del evento en la página coincide con el esperado."""
-        status_element = self.page.locator("#event-status")  #  Selector para el elemento que muestra el estado
-        self.assertTrue(status_element.is_visible())
-        self.assertEqual(status_element.inner_text(), expected_status)
+        """Versión corregida para encontrar el estado en el HTML actual"""
+        # Localizar la sección de estado usando el texto "Estado del Evento"
+        status_header = self.page.get_by_text("Estado del Evento", exact=True)
+    
+        # Navegar al elemento hermano siguiente que contiene el badge
+        status_element = status_header.locator("xpath=./following-sibling::span")
+        
+        # Esperar y verificar
+        status_element.wait_for(state="visible", timeout=5000)
+        actual_text = status_element.inner_text().strip()
+        self.assertEqual(actual_text, expected_status)
 
 
     def test_event_status_changes_on_event_detail(self):
-        """
-        Test E2E que verifica que el estado del evento se actualiza correctamente
-        y se muestra en la página de detalle del evento.
-        """
-
-        #  1.  Iniciar sesión como organizador
+        # 1. Iniciar sesión
         self.login_user("organizador", "password123")
-
-        #  2.  Navegar a la página de detalle del evento
+        
+        # 2. Navegar a detalle de evento
         self.navigate_to_event_detail(self.event.id)
-
-        #  3.  Verificar el estado inicial (debería ser 'activo')
-        self.assert_event_status_is("activo")
-
-        #  4.  Modificar la fecha del evento para que sea en el pasado
-        self.event.scheduled_at = timezone.now() - timezone.timedelta(days=1)
-        self.event.save()
-
-        #  5.  Recargar la página de detalle del evento
-        self.page.reload()
-
-        #  6.  Verificar que el estado se ha actualizado a 'finalizado'
-        self.assert_event_status_is("finalizado")
-
-        #  7.  (Opcional)  Simular la venta de todas las entradas y verificar 'agotado'
+        
+        # 3. Verificar estado inicial
+        self.assert_event_status_is("Activo")
+        
+        # 4. Simular entradas agotadas (sin cambiar fecha)
         self.event.tickets_sold = self.venue.capacity
         self.event.save()
         self.page.reload()
-        self.assert_event_status_is("agotado")
-
-        #  8.  (Opcional)  Verificar 'cancelado' (si tienes una forma de cambiarlo en la UI)
-        #  ...
+        self.assert_event_status_is("Agotado")  # Primero probamos estado agotado
+        
+        # 5. Resetear tickets vendidos
+        self.event.tickets_sold = 0
+        self.event.save()
+        
+        # 6. Modificar fecha al pasado
+        self.event.scheduled_at = timezone.now() - timezone.timedelta(days=1)
+        self.event.save()
+        self.page.reload()
+        self.assert_event_status_is("Finalizado")  # Luego probamos estado finalizado

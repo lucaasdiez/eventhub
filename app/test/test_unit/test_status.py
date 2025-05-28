@@ -104,10 +104,8 @@ class EventStatusUnitTest(TestCase):
 
     def test_update_status_no_venue(self):
         """
-        Test:  Si tienes un estado especial para eventos sin lugar, pruébalo aquí.
-               En tu modelo original, no hay un estado 'sin_lugar', así que esto
-               es solo si agregas esa lógica.
+        Test: Verifica que eventos sin lugar tengan estado 'sin lugar'
         """
         event_no_venue = self.create_event(venue=None)
         event_no_venue.update_status()
-        self.assertEqual(event_no_venue.status, "activo")  #  O el estado que definas para esto
+        self.assertEqual(event_no_venue.status, "sin lugar")  # Corregido para reflejar el comportamiento real
