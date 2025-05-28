@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 
+
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -8,7 +9,7 @@ from django.db.models import QuerySet, Sum
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.utils import timezone
-
+from django.db import models, transaction
 
 class User(AbstractUser):
     is_organizer = models.BooleanField(default=False)
@@ -39,7 +40,7 @@ class Venue(models.Model):
     name = models.CharField(max_length=200, blank=False)
     address = models.CharField(max_length=300, blank=False)
     city = models.CharField(max_length=100, blank=False)
-    capacity = models.PositiveIntegerField(blank=False)
+    capacity = models.PositiveIntegerField(default=0)
     contact_info = models.TextField(blank=False)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
 
@@ -135,7 +136,14 @@ class Category(models.Model):
 
         self.save()
     
-    
+STATUS_CHOICES = [
+    ('activo', 'Activo'),
+    ('canceledo', 'Cancelado'),
+    ('reprogramado', 'Reprogramado'),
+    ('agotado', 'Agotado'),
+    ('finalizado', 'Finalizado')
+]
+
 class Event(models.Model):
     id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=200)
@@ -147,9 +155,13 @@ class Event(models.Model):
     venue = models.ForeignKey(Venue, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    premium = models.BooleanField(default=False, verbose_name="Evento Premium")  
+
+    premium = models.BooleanField(default=False, verbose_name="Evento Premium") 
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='active') 
+    tickets_sold = models.PositiveIntegerField(default=0)
     available_tickets = models.PositiveIntegerField(default=0)
     tickets: QuerySet['Ticket']
+
 
     def __str__(self):
         return self.title
@@ -189,6 +201,27 @@ class Event(models.Model):
         self.scheduled_at = scheduled_at or self.scheduled_at
         self.organizer = organizer or self.organizer
         self.save()
+
+    
+    @property
+    def available_tickets(self):
+        if self.venue:  # Verifica que venue no sea None
+            return self.venue.capacity - self.tickets_sold
+        return 0  # Si no hay venue, no hay capacidad, por lo tanto disponibles = 0
+
+    def update_status(self):
+        now = timezone.now()
+
+        if self.scheduled_at <= now:
+            self.status = "finalizado"
+        elif self.venue and self.tickets_sold >= self.venue.capacity:
+            self.status = "agotado"
+        elif not self.venue:
+            self.status = "sin lugar"  # Podés ponerle un estado especial si querés manejar eventos sin lugar
+        else:
+            self.status = "activo"
+        self.save()
+
         
     def tickets_sold(self):
         """Total de entradas vendidas para este evento."""
@@ -230,6 +263,7 @@ class Favorito(models.Model):
 
     def __str__(self):
         return f"{self.usuario.username} - {self.evento.title}"
+
 
 
 
@@ -288,7 +322,10 @@ class Ticket(models.Model):
     def save(self, *args, **kwargs):
         is_new = self.pk is None
         super().save(*args, **kwargs)
+
+
         if is_new and not self.ticket_code:
+            count = Ticket.objects.filter(type=self.type).count()
             prefix = 'VIP' if self.type == self.VIP else 'GEN'
             self.ticket_code = f"{prefix}-{self.pk:04d}"
             
@@ -300,8 +337,18 @@ class Ticket(models.Model):
             super().save(*args, **kwargs)
 
 
+
     def __str__(self):
         return f"{self.ticket_code} - {self.type}"
+
+    @classmethod
+    def validate_ticket_purchase(cls, event, quantity, user):
+        if event.status != "activo":
+            return False, "El evento no está disponible para compra"
+        disponibles = event.venue.capacity - event.tickets_sold
+        if quantity > disponibles:
+            return False, f"Solo hay {disponibles} entradas disponibles"
+        return True, None
 
 
 

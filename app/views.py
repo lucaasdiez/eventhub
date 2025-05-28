@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from datetime import timedelta
 
 from django.contrib import messages
@@ -10,7 +11,13 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import generic
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+
+from django.core.exceptions import ValidationError
+from django.urls import reverse
+
+
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
+
 from .forms import CategoryForm, CommentForm, EventForm, RefundRequestForm
 from .models import Category, Comment, Event, RefundRequest, Ticket, User, Venue
 from django.http import JsonResponse
@@ -88,9 +95,11 @@ def events(request):
 
 
 @login_required
-def event_detail(request, id):
-    event = get_object_or_404(Event, pk=id)
+def event_detail(request, event_id):
+    event = get_object_or_404(Event, id=event_id)
+    event.update_status()
     comments = Comment.objects.filter(event=event).order_by('-created_at')
+    disponibles = (event.venue.capacity if event.venue else 0) - event.tickets_sold
 
     if request.method == 'POST':
         form = CommentForm(request.POST)
@@ -99,15 +108,16 @@ def event_detail(request, id):
             comment.event = event
             comment.user = request.user
             comment.save()
-            # redirige luego de guardar
-            return redirect('event_detail', id=event.id)
+            return redirect('event_detail', event_id=event.id)  # <-- Aquí está el cambio
     else:
         form = CommentForm()
+
 
     return render(request, 'app/event/event_detail.html', {
         'event': event,
         'comments': comments,
         'form': form,
+        'disponibles': max(disponibles, 0),
     })
 
 
@@ -142,7 +152,9 @@ def event_form(request, id=None):
             event.organizer = request.user
             event.save()
             form.save_m2m()  
+
             return redirect('events')
+
         else:
             print(form.errors)
     else:
@@ -310,8 +322,7 @@ class TicketListView(ListView):
             return qs.filter(event__organizer=user)
 
         return qs.filter(user=user)
-
-
+    
 class TicketCreateView(LoginRequiredMixin, CreateView):
     model = Ticket
     template_name = 'app/tickets/ticket_form.html'
@@ -340,7 +351,6 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
         return context
 
     def form_valid(self, form):
-        # Validar límite de tickets por evento
         is_valid, error_msg = Ticket.validate_ticket_purchase(
             user=self.request.user,
             event=form.cleaned_data['event'],
@@ -348,6 +358,7 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
         )
         
         if not is_valid:
+
             form.add_error(None, error_msg)
             return self.form_invalid(form)
             
@@ -366,6 +377,7 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
             )
             return redirect('ticket_form')
 
+
         # Cálculo de precio 
         if form.cleaned_data['type'] == 'VIP':
             precio_unitario = 100.00
@@ -376,7 +388,15 @@ class TicketCreateView(LoginRequiredMixin, CreateView):
         form.instance.price_paid = precio_unitario * quantity
         
         response = super().form_valid(form)
+
+        
+        # Actualizar tickets vendidos y estado del evento
+        event.tickets_sold += quantity
+        event.save()
+        event.update_status()  # Método existente en el modelo Event
+
         event.update_availability() 
+
         return response
 
 class TicketUpdateView(LoginRequiredMixin, UpdateView):
@@ -389,7 +409,6 @@ class TicketDeleteView(LoginRequiredMixin, DeleteView):
     model = Ticket
     template_name = 'app/tickets/ticket_confirm_delete.html'
     success_url = reverse_lazy('ticket_list')
-
 
 @login_required
 def update_refund_status(request, refund_id, action):
