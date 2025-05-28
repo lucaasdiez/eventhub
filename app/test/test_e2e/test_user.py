@@ -36,8 +36,8 @@ class RegistrationE2ETest(BaseE2ETest):
         # Enviar el formulario
         self.page.click("button[type='submit']")
 
-        # Verificar que se redirige a la home
-        expect(self.page).to_have_url(self.live_server_url + "/")
+        # Verificar que se redirige a events
+        self.page.wait_for_url(f"{self.live_server_url}/events/*")
 
         # Verificar que el usuario fue creado en la base de datos
         self.assertTrue(User.objects.filter(username="nuevo_usuario").exists())
@@ -56,8 +56,8 @@ class RegistrationE2ETest(BaseE2ETest):
         # Enviar el formulario
         self.page.click("button[type='submit']")
 
-        # Verificar redirección a la home y verificación en la base de datos
-        expect(self.page).to_have_url(self.live_server_url + "/")
+        # Verificar redirección y verificación en la base de datos
+        self.page.wait_for_url(f"{self.live_server_url}/events/*")
         self.assertTrue(User.objects.filter(username="nuevo_usuario").exists())
 
     def test_duplicate_email_registration(self):
@@ -138,8 +138,8 @@ class LoginE2ETest(BaseE2ETest):
         # Utilizar el método auxiliar para iniciar sesión
         self.login_user(user.username, "password123")
 
-        # Verificar que se redirige a la home
-        expect(self.page).to_have_url(self.live_server_url + "/")
+        # Verificar que se redirige a events
+        self.page.wait_for_url(f"{self.live_server_url}/events/*")
 
     def test_invalid_credentials_login(self):
         """Verifica el intento de login con credenciales inválidas"""

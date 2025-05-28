@@ -5,7 +5,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from app.models import Category, Event, User, Venue
+from app.models import Event, User
 
 
 class BaseEventTestCase(TestCase):
@@ -60,7 +60,7 @@ class EventsListViewTest(BaseEventTestCase):
 
         # Verificar respuesta
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "app/event/events.html")
+        self.assertTemplateUsed(response, "app/events.html")
         self.assertIn("events", response.context)
         self.assertIn("user_is_organizer", response.context)
         self.assertEqual(len(response.context["events"]), 2)
@@ -106,7 +106,7 @@ class EventDetailViewTest(BaseEventTestCase):
 
         # Verificar respuesta
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "app/event/event_detail.html")
+        self.assertTemplateUsed(response, "app/event_detail.html")
         self.assertIn("event", response.context)
         self.assertEqual(response.context["event"].id, self.event1.id)
 
@@ -140,11 +140,11 @@ class EventFormViewTest(BaseEventTestCase):
         self.client.login(username="organizador", password="password123")
 
         # Hacer petición a la vista event_form para crear nuevo evento (id=None)
-        response = self.client.get(reverse("event_create"))
+        response = self.client.get(reverse("event_form"))
 
         # Verificar respuesta
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "app/event/event_form.html")
+        self.assertTemplateUsed(response, "app/event_form.html")
         self.assertIn("event", response.context)
         self.assertTrue(response.context["user_is_organizer"])
 
@@ -154,7 +154,7 @@ class EventFormViewTest(BaseEventTestCase):
         self.client.login(username="regular", password="password123")
 
         # Hacer petición a la vista event_form
-        response = self.client.get(reverse("event_create"))
+        response = self.client.get(reverse("event_form"))
 
         # Verificar que redirecciona a events
         self.assertEqual(response.status_code, 302)
@@ -163,7 +163,7 @@ class EventFormViewTest(BaseEventTestCase):
     def test_event_form_view_without_login(self):
         """Test que verifica que la vista event_form redirige a login cuando el usuario no está logueado"""
         # Hacer petición a la vista event_form sin login
-        response = self.client.get(reverse("event_create"))
+        response = self.client.get(reverse("event_form"))
 
         # Verificar que redirecciona al login
         self.assertEqual(response.status_code, 302)
@@ -179,7 +179,7 @@ class EventFormViewTest(BaseEventTestCase):
 
         # Verificar respuesta
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "app/event/event_form.html")
+        self.assertTemplateUsed(response, "app/event_form.html")
         self.assertEqual(response.context["event"].id, self.event1.id)
 
 
@@ -190,27 +190,17 @@ class EventFormSubmissionTest(BaseEventTestCase):
         """Test que verifica que se puede crear un evento mediante POST"""
         # Login con usuario organizador
         self.client.login(username="organizador", password="password123")
-        self.venue = Venue.objects.create(
-            name="Test Venue",
-            address="Test Address",
-            city="Test City",
-            capacity=100,
-            contact_info="Test Contact",
-            created_by=self.organizer
-        )
-        self.category = Category.objects.create(name="Test Category")
 
         # Crear datos para el evento
         event_data = {
             "title": "Nuevo Evento",
             "description": "Descripción del nuevo evento",
-            "scheduled_at": "2025-10-31 14:30:00",
-            "venue": self.venue.id,
-            "categories": [self.category.id]
+            "date": "2025-05-01",
+            "time": "14:30",
         }
 
         # Hacer petición POST a la vista event_form
-        response = self.client.post(reverse("event_create"), event_data)
+        response = self.client.post(reverse("event_form"), event_data)
 
         # Verificar que redirecciona a events
         self.assertEqual(response.status_code, 302)
@@ -221,8 +211,8 @@ class EventFormSubmissionTest(BaseEventTestCase):
         evento = Event.objects.get(title="Nuevo Evento")
         self.assertEqual(evento.description, "Descripción del nuevo evento")
         self.assertEqual(evento.scheduled_at.year, 2025)
-        self.assertEqual(evento.scheduled_at.month, 10)
-        self.assertEqual(evento.scheduled_at.day, 31)
+        self.assertEqual(evento.scheduled_at.month, 5)
+        self.assertEqual(evento.scheduled_at.day, 1)
         self.assertEqual(evento.scheduled_at.hour, 14)
         self.assertEqual(evento.scheduled_at.minute, 30)
         self.assertEqual(evento.organizer, self.organizer)
@@ -236,7 +226,8 @@ class EventFormSubmissionTest(BaseEventTestCase):
         updated_data = {
             "title": "Evento 1 Actualizado",
             "description": "Nueva descripción actualizada",
-            "scheduled_at": "2025-08-12 17:30:00",
+            "date": "2025-06-15",
+            "time": "16:45",
         }
 
         # Hacer petición POST para editar el evento
@@ -252,10 +243,10 @@ class EventFormSubmissionTest(BaseEventTestCase):
         self.assertEqual(self.event1.title, "Evento 1 Actualizado")
         self.assertEqual(self.event1.description, "Nueva descripción actualizada")
         self.assertEqual(self.event1.scheduled_at.year, 2025)
-        self.assertEqual(self.event1.scheduled_at.month, 8)
-        self.assertEqual(self.event1.scheduled_at.day, 12)
-        self.assertEqual(self.event1.scheduled_at.hour, 17)
-        self.assertEqual(self.event1.scheduled_at.minute, 30)
+        self.assertEqual(self.event1.scheduled_at.month, 6)
+        self.assertEqual(self.event1.scheduled_at.day, 15)
+        self.assertEqual(self.event1.scheduled_at.hour, 16)
+        self.assertEqual(self.event1.scheduled_at.minute, 45)
 
 
 class EventDeleteViewTest(BaseEventTestCase):
