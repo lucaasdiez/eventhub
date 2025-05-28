@@ -85,7 +85,7 @@ def home(request):
 
 
 @login_required
-def events(request):
+def event(request):
     queryset = Event.objects.all().order_by("scheduled_at")
     favorite_events = request.user.favorites.all() if request.user.is_authenticated else []
     if not request.user.is_organizer:
@@ -122,12 +122,12 @@ def event_detail(request, event_id):
     })
 
 @login_required
-def event_delete(request, id):
+def event_delete(request, event_id):
     if not request.user.is_organizer:
         messages.error(request, "No tienes permisos")
         return redirect("events")
 
-    event = get_object_or_404(Event, pk=id)
+    event = get_object_or_404(Event, pk=event_id)
     if request.method == "POST":
         event.delete()
         messages.success(request, "Evento eliminado")
@@ -137,7 +137,7 @@ def event_delete(request, id):
 
 
 @login_required
-def event_form(request, event_id):
+def event_form(request, event_id=None):
     if not request.user.is_organizer:
         messages.error(request, "No tienes permisos")
         return redirect("events")
