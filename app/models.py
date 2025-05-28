@@ -6,8 +6,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
-from django.db.models import Sum
-import uuid
+from django.db import models, transaction
 
 class User(AbstractUser):
     is_organizer = models.BooleanField(default=False)
@@ -156,14 +155,22 @@ class Event(models.Model):
         self.scheduled_at = scheduled_at or self.scheduled_at
         self.organizer = organizer or self.organizer
         self.save()
+    
+    @property
+    def available_tickets(self):
+        if self.venue:  # Verifica que venue no sea None
+            return self.venue.capacity - self.tickets_sold
+        return 0  # Si no hay venue, no hay capacidad, por lo tanto disponibles = 0
 
     def update_status(self):
         now = timezone.now()
-    
+
         if self.scheduled_at <= now:
             self.status = "finalizado"
         elif self.venue and self.tickets_sold >= self.venue.capacity:
             self.status = "agotado"
+        elif not self.venue:
+            self.status = "sin lugar"  # Podés ponerle un estado especial si querés manejar eventos sin lugar
         else:
             self.status = "activo"
         self.save()
@@ -206,16 +213,27 @@ class Ticket(models.Model):
     used = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
-        if not self.ticket_code:
-            super().save(*args, **kwargs)
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new:
             prefix = 'VIP' if self.type == self.VIP else 'GEN'
-            self.ticket_code = f"{prefix}-{self.pk:04d}"
-            super().save(*args, **kwargs)
-        else:
-            super().save(*args, **kwargs)
+            # Contar cuántos tickets hay de este tipo para crear un código único
+            count = Ticket.objects.filter(type=self.type).count()
+            self.ticket_code = f"{prefix}-{count:04d}"
+            # Actualizar el código en la base de datos
+            Ticket.objects.filter(pk=self.pk).update(ticket_code=self.ticket_code)
 
     def __str__(self):
         return f"{self.ticket_code} - {self.type}"
+
+    @classmethod
+    def validate_ticket_purchase(cls, event, quantity, user):
+        if event.status != "activo":
+            return False, "El evento no está disponible para compra"
+        disponibles = event.venue.capacity - event.tickets_sold
+        if quantity > disponibles:
+            return False, f"Solo hay {disponibles} entradas disponibles"
+        return True, None
 
 
 
