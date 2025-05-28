@@ -139,7 +139,7 @@ class Category(models.Model):
     
 STATUS_CHOICES = [
     ('activo', 'Activo'),
-    ('canceledo', 'Cancelado'),
+    ('cancelado', 'Cancelado'),
     ('reprogramado', 'Reprogramado'),
     ('agotado', 'Agotado'),
     ('finalizado', 'Finalizado')
@@ -224,7 +224,8 @@ class Event(models.Model):
         """Actualiza available_tickets según el venue y tickets vendidos."""
         if self.venue:  # Si el evento tiene un venue asignado
             self.available_tickets = self.venue.capacity - self.tickets_sold
-            self.save(update_fields=['available_tickets'])
+            self.save(update_fields=[''
+            ''])
 
 
     def entradas_vendidas(self):
