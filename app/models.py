@@ -12,6 +12,7 @@ from django.utils import timezone
 
 class User(AbstractUser):
     is_organizer = models.BooleanField(default=False)
+    favoritos = models.ManyToManyField('Event', through='Favorito', related_name='usuarios_favoritos')
 
     @classmethod
     def validate_new_user(cls, email, username, password, password_confirm):
@@ -216,6 +217,20 @@ class Event(models.Model):
             return "Baja demanda"
         return ""
 
+        
+class Favorito(models.Model):
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+    evento = models.ForeignKey(Event, on_delete=models.CASCADE)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('usuario', 'evento')  # Evita duplicados
+        verbose_name = 'Favorito'
+        verbose_name_plural = 'Favoritos'
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.evento.title}"
+
 
 
 class Comment(models.Model):
@@ -348,3 +363,4 @@ class RefundRequest(models.Model):
 def update_event_availability(sender, instance, **kwargs):
     """Actualiza disponibilidad al crear/eliminar tickets."""
     instance.event.update_availability()
+

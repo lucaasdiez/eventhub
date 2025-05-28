@@ -29,6 +29,9 @@ urlpatterns = [
 
     path('comment/', views.comentarios_organizador, name='comentarios_organizador'),
     path('comentarios/eliminar/<int:comentario_id>/', views.eliminar_comentario, name='eliminar_comentario'),
+    path("comentarios/", views.comentarios_organizador, name="comentarios_organizador"),
+    path('comentarios/editar/<int:comentario_id>/', views.editar_comentario, name='editar_comentario'),
+
 
     path('tickets/', TicketListView.as_view(), name='ticket_list'),
     path('tickets/new/', TicketCreateView.as_view(), name='ticket_form'),
@@ -39,6 +42,13 @@ urlpatterns = [
     path('refunds/', views.manage_refunds, name='manage_refunds'),
     path('refunds/<int:refund_id>/', views.refund_detail, name='refund_detail'),
     path('refunds/<int:refund_id>/<str:action>/', views.update_refund_status, name='update_refund_status'),
+
+    path("events/<int:event_id>/favorito/", views.agregar_favorito, name="agregar_favorito"),
+    path("events/<int:event_id>/favorito/eliminar/", views.eliminar_favorito, name="eliminar_favorito"),
+    path("favoritos/", views.lista_favoritos, name="lista_favoritos"),
+    path('eventos/favoritos/', views.lista_favoritos, name='lista_favoritos'),
+
+
 ]
     
 
