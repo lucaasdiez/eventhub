@@ -1,10 +1,13 @@
 from django.test import TestCase
 from django.utils import timezone
-from app.models import User, Event, Favorito
+from django.contrib.auth import get_user_model
+from app.models import Event, Favorito
+
+User = get_user_model()
 
 class FavoritoTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create(username="testuser", password="1234")
+        self.user = User.objects.create_user(username="testuser", password="1234")
         self.event = Event.objects.create(
             title="Test Event",
             description="Evento de prueba",
