@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from django.test import LiveServerTestCase
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 from app.models import Event, User, Venue
 
@@ -43,7 +43,7 @@ class TicketE2ETest(LiveServerTestCase):
             page.wait_for_timeout(500)  # medio segundo
 
             # Verificar el total
-            total_text = page.inner_text('#total')
-            assert total_text.strip() == '$440.00'
+            expect(page.locator('#total')).to_have_text('$440.00')
+
 
             browser.close()
