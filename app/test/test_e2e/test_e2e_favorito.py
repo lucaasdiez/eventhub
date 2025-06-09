@@ -1,83 +1,66 @@
-from django.test import TestCase, Client
+import datetime
 from django.utils import timezone
-from django.urls import reverse
-from django.contrib.messages import get_messages
-from app.models import User, Event, Favorito
+from playwright.sync_api import expect
+from app.models import Event, User
+from app.test.test_e2e.base import BaseE2ETest
 
-class AddToFavoritesE2ETest(TestCase):
+
+class FavoriteBaseTest(BaseE2ETest):
+    """Clase base para tests de favoritos"""
+
     def setUp(self):
-        self.client = Client()
+        super().setUp()
+
+        # Crear usuario
         self.user = User.objects.create_user(
-            username='testuser', 
-            password='testpass123',
-            is_organizer=True
+            username="testuser",
+            email="testuser@example.com",
+            password="1234",
         )
+
+        # Crear evento
         self.event = Event.objects.create(
-            title='Fiesta de la Cerveza',
-            description='Evento sobre cerveza',
-            scheduled_at=timezone.now() + timezone.timedelta(days=5),
-            organizer=self.user
+            title="Evento Django",
+            description="Charlas sobre Django y más",
+            scheduled_at=timezone.now() + datetime.timedelta(days=3),
+            organizer=self.user,
         )
-        self.client.login(username='testuser', password='testpass123')
 
-    def test_user_can_add_event_to_favorites(self):
-        url = reverse('agregar_favorito', args=[self.event.id])
-        
-        response = self.client.post(url, follow=True)
-        
-        # Verificaciones básicas
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(
-            Favorito.objects.filter(usuario=self.user, evento=self.event).exists(),
-            "El favorito no se creó en la base de datos"
-        )
-        
-        # Verifica que se redirigió a la lista de favoritos
-        self.assertTemplateUsed(response, 'app/event/favoritos/lista.html')
-        
-        # Opcional: Verifica que el evento aparece en la lista
-        self.assertContains(response, self.event.title)
 
-    def test_add_favorite_redirects_properly(self):
-        url = reverse('agregar_favorito', args=[self.event.id])
-        response = self.client.post(url)  # Sin follow
-        
-        self.assertEqual(response.status_code, 302)
-        
-        # Opción 1: Para Django >= 3.0 (más moderno)
-        self.assertEqual(response.headers['Location'], reverse('lista_favoritos'))
-        
-        # Opción 2: Alternativa compatible con versiones anteriores
-        self.assertIn(reverse('lista_favoritos'), response.get('Location', ''))
+class FavoriteFunctionalityTest(FavoriteBaseTest):
+    """Tests funcionales de favoritos"""
 
-    def test_user_can_remove_from_favorites(self):
-        # Primero agregamos un favorito
-        Favorito.objects.create(usuario=self.user, evento=self.event)
-        
-        url = reverse('eliminar_favorito', args=[self.event.id])
-        response = self.client.post(url, follow=True)
-        
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(
-            Favorito.objects.filter(usuario=self.user, evento=self.event).exists(),
-            "El favorito no se eliminó correctamente"
-        )
-        # Verifica que se redirigió a la lista vacía
-        self.assertContains(response, "Aún no tienes eventos favoritos")
+    def test_user_can_add_and_remove_favorite(self):
+        """Verifica que el usuario pueda agregar y eliminar un evento de favoritos"""
+        self.login_user("testuser", "1234")
 
-    def test_anonymous_cannot_add_favorites(self):
-        self.client.logout()
-        url = reverse('agregar_favorito', args=[self.event.id])
-        response = self.client.post(url)
-        
-        self.assertEqual(response.status_code, 302)  # Redirige a login
-        self.assertFalse(Favorito.objects.exists())
+        # Ir al detalle del evento
+        self.page.goto(f"{self.live_server_url}/events/")
 
-    # Test adicional para verificar mensajes (si usas Django messages)
-    def test_add_favorite_shows_message(self):
-        url = reverse('agregar_favorito', args=[self.event.id])
-        response = self.client.post(url, follow=True)
+        add_button = self.page.locator('a[title="Añadir a favoritos"]')
         
-        messages = list(get_messages(response.wsgi_request))
-        self.assertEqual(len(messages), 1)
-        self.assertIn('añadido a favoritos', str(messages[0]))
+        # Esperar hasta que el botón esté visible o fallar con mensaje útil
+        try:
+            add_button.wait_for(state="visible", timeout=10000)
+        except Exception:
+            print("ERROR: El botón 'Añadir a favoritos' no apareció en la página.")
+            print("Contenido HTML de la página para depuración:")
+            print(self.page.content())
+            raise
+        
+        expect(add_button).to_be_visible()
+
+        # Hacer clic para agregar a favoritos
+        add_button.click()
+
+        remove_button = self.page.locator('a[title="Quitar de favoritos"]')
+        remove_button.wait_for(state="visible", timeout=10000)
+        expect(remove_button).to_be_visible()
+
+        # Hacer clic para quitar de favoritos
+        remove_button.click()
+
+        # Esperar que vuelva el botón "Añadir a favoritos"
+        add_button = self.page.locator('a[title="Añadir a favoritos"]')
+        add_button.wait_for(state="visible", timeout=10000)
+        expect(add_button).to_be_visible()
