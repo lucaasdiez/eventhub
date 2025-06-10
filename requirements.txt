@@ -3,3 +3,4 @@ certifi==2025.1.31
 Django==5.2
 gunicorn==23.0.0
 sqlparse==0.5.3
+python-dotenv
