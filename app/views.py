@@ -140,7 +140,7 @@ def event_delete(request, id):
 
 
 @login_required
-def event_form(request, id=None=None):
+def event_form(request, id=None):
     if not request.user.is_organizer:
         messages.error(request, "No tienes permisos")
         return redirect("events")
