@@ -11,6 +11,7 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import generic
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+from django.db.models import Count
 
 from django.core.exceptions import ValidationError
 from django.urls import reverse
@@ -19,7 +20,7 @@ from django.urls import reverse
 from django.http import HttpResponseForbidden, HttpResponseNotAllowed
 
 from .forms import CategoryForm, CommentForm, EventForm, RefundRequestForm
-from .models import Category, Comment, Event, RefundRequest, Ticket, User, Venue
+from .models import Category, Comment, Event, RefundRequest, Ticket, User, Venue, Notification
 from django.http import JsonResponse
 
 def register(request):
@@ -307,7 +308,7 @@ def eliminar_comentario(request, comentario_id):
 
 
 
-class TicketListView(ListView):
+class TicketListView(LoginRequiredMixin, ListView):
     model = Ticket
     template_name = 'app/tickets/ticket_list.html'
     context_object_name = 'tickets'
@@ -554,3 +555,41 @@ def events(request):
         "events": queryset,
         "favoritos_ids": favoritos_ids
     })
+
+
+@login_required
+def notifications(request):
+    """Lista todas las notificaciones del usuario"""
+    notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
+    unread_count = notifications.filter(read=False).count()
+    
+    return render(request, 'app/notifications/list_notifications.html', {
+        'notifications': notifications,
+        'unread_count': unread_count
+    })
+
+@login_required
+def mark_notification_read(request, notification_id):
+    """Marca una notificación como leída"""
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    if not notification.read:
+        notification.read = True
+        notification.save()
+    return redirect('notifications')
+
+@login_required
+def mark_all_notifications_read(request):
+    """Marca todas las notificaciones como leídas"""
+    Notification.objects.filter(user=request.user, read=False).update(read=True)
+    return redirect('notifications')
+
+# Agrega este contexto a tus vistas existentes para mostrar el contador
+def base_context(request):
+    """Contexto común para todas las vistas"""
+    if request.user.is_authenticated:
+        unread_count = Notification.objects.filter(
+            user=request.user, 
+            read=False
+        ).count()
+        return {'unread_notifications_count': unread_count}
+    return {}

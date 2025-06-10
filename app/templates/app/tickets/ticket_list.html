@@ -4,6 +4,7 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="display-4">Mis Tickets</h1>
+        {% if not user.is_organizer  %}
         <div class="btn-group">
             <a href="{% url 'ticket_form' %}" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Comprar Ticket
@@ -12,6 +13,7 @@
                 <i class="bi bi-arrow-counterclockwise"></i> Solicitar Reembolso
             </a>
         </div>
+        {% endif %}
     </div>
 
     <!-- Agregar alerta informativa sobre el límite -->

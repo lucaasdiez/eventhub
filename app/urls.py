@@ -2,7 +2,7 @@ from django.contrib.auth.views import LogoutView
 from django.urls import path
 
 from . import views
-from .views import TicketCreateView, TicketDeleteView, TicketListView, TicketUpdateView
+from .views import TicketCreateView, TicketDeleteView, TicketListView, TicketUpdateView, notifications, mark_all_notifications_read, mark_notification_read
 
 urlpatterns = [
 
@@ -49,6 +49,9 @@ urlpatterns = [
     path("favoritos/", views.lista_favoritos, name="lista_favoritos"),
     path('eventos/favoritos/', views.lista_favoritos, name='lista_favoritos'),
 
+    path('notifications/', notifications, name='notifications'),
+    path('notifications/<int:notification_id>/read/', mark_notification_read, name='mark_notification_read'),
+    path('notifications/mark_all_read/', mark_all_notifications_read, name='mark_all_notifications_read'),
 
 ]
     
