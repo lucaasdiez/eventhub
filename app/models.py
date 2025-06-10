@@ -142,10 +142,10 @@ class Category(models.Model):
     
 STATUS_CHOICES = [
     ('activo', 'Activo'),
-    ('canceledo', 'Cancelado'),
+    ('cancelado', 'Cancelado'),  
     ('reprogramado', 'Reprogramado'),
     ('agotado', 'Agotado'),
-    ('finalizado', 'Finalizado')
+    ('finalizado', 'Finalizado'),
 ]
 
 class Event(models.Model):
@@ -160,7 +160,7 @@ class Event(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     premium = models.BooleanField(default=False, verbose_name="Evento Premium") 
-    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='active') 
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='activo')
     tickets_sold = models.PositiveIntegerField(default=0)
     available_tickets = models.PositiveIntegerField(default=0)
     tickets: QuerySet['Ticket']
@@ -208,18 +208,25 @@ class Event(models.Model):
     
     def update_status(self):
         now = timezone.now()
+        
+        # Convertir a zona horaria si es naive
+        if timezone.is_naive(self.scheduled_at):
+            scheduled_at = timezone.make_aware(self.scheduled_at, timezone.get_current_timezone())
+        else:
+            scheduled_at = self.scheduled_at
 
-        scheduled_at_aware = self.scheduled_at
-        if timezone.is_naive(scheduled_at_aware):
-            scheduled_at_aware = timezone.make_aware(self.scheduled_at, timezone.get_current_timezone())
-        if scheduled_at_aware <= now:
+        if scheduled_at <= now:
             self.status = "finalizado"
         elif not self.venue:
             self.status = "sin lugar"
-        elif self.available_tickets <= 0:
-            self.status = "agotado"
         else:
-            self.status = "activo"
+            # Actualizar disponibilidad antes de verificar
+            self.update_availability()
+            
+            if self.available_tickets <= 0:
+                self.status = "agotado"
+            else:
+                self.status = "activo"
         self.save()
 
     
@@ -227,7 +234,7 @@ class Event(models.Model):
         """Actualiza available_tickets según el venue y tickets vendidos."""
         if self.venue:  # Si el evento tiene un venue asignado
             self.available_tickets = self.venue.capacity - self.tickets_sold
-            self.save(update_fields=['available_tickets'])
+            self.save()
 
 
     def entradas_vendidas(self):

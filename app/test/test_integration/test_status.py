@@ -1,10 +1,12 @@
 #  test_event_status_integration.py  (o puedes agregarlo a test_event.py)
 import datetime
-from django.utils import timezone
+
 from django.urls import reverse
+from django.utils import timezone
 
 from app.models import Event, Venue
 from app.test.test_integration.test_event import BaseEventTestCase  #  Reutilizamos la clase base
+
 
 class EventStatusIntegrationTest(BaseEventTestCase):
     """Tests de integración para el estado del evento"""

@@ -14,7 +14,8 @@
                         {% elif event.status == 'reprogramado' %}bg-warning
                         {% elif event.status == 'agotado' %}bg-secondary
                         {% elif event.status == 'finalizado' %}bg-dark
-                        {% endif %}">
+                        {% endif %}"
+                        data-test="event-status">
                         {{ event.get_status_display }}
                     </span>
                 </div>
