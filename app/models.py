@@ -12,6 +12,8 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.db import models, transaction
 from django.core.validators import MinValueValidator
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
 
 class User(AbstractUser):
     is_organizer = models.BooleanField(default=False)
@@ -400,3 +402,82 @@ class RefundRequest(models.Model):
 @receiver([post_save, post_delete], sender=Ticket)
 def update_event_availability(sender, instance, **kwargs):
     instance.event.update_availability()
+
+
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    message = models.TextField()
+    read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']  # Para que las más nuevas aparezcan primero
+    
+    def __str__(self):
+        return f"Notificación para {self.user.username} - {self.event.title}"
+    
+@receiver(pre_save, sender=Event)
+def notify_date_venue_changes(sender, instance, **kwargs):
+    if not instance.pk:  # Es un nuevo evento, no hay cambios
+        return
+    
+    try:
+        old_event = Event.objects.get(pk=instance.pk)
+    except Event.DoesNotExist:
+        return
+    
+    # Verificar solo cambios de fecha y lugar
+    changes = {}
+    
+    # Cambio de fecha
+    if old_event.scheduled_at != instance.scheduled_at:
+        changes['date'] = {
+            'old': old_event.scheduled_at,
+            'new': instance.scheduled_at
+        }
+    
+    # Cambio de lugar
+    if old_event.venue != instance.venue:
+        changes['venue'] = {
+            'old': old_event.venue,
+            'new': instance.venue
+        }
+    
+    if not changes:
+        return
+    
+    # Crear mensaje de notificación
+    message_parts = [f"El evento '{instance.title}' ha tenido cambios:"]
+    
+    if 'date' in changes:
+        message_parts.append(
+            f"📅 Fecha cambiada de {changes['date']['old']} a {changes['date']['new']}"
+        )
+    
+    if 'venue' in changes:
+        old_venue_name = changes['venue']['old'].name if changes['venue']['old'] else "Sin lugar definido"
+        new_venue_name = changes['venue']['new'].name if changes['venue']['new'] else "Sin lugar definido"
+        message_parts.append(
+            f"📍 Lugar cambiado de '{old_venue_name}' a '{new_venue_name}'"
+        )
+    
+    full_message = " ".join(message_parts)
+    
+    # Obtener todos los usuarios únicos con tickets para este evento
+    from django.db.models import Subquery, OuterRef
+    user_ids = Ticket.objects.filter(
+        event=instance
+    ).values_list('user_id', flat=True).distinct()
+    
+    # Crear notificaciones en lote
+    notifications = [
+        Notification(
+            user_id=user_id,
+            event=instance,
+            message=full_message
+        )
+        for user_id in user_ids
+    ]
+    
+    Notification.objects.bulk_create(notifications)
