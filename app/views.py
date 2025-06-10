@@ -118,8 +118,10 @@ def event_detail(request, id):
         'comments': comments,
         'form': form,
         'disponibles': max(disponibles, 0),
-        'es_favorito': es_favorito
+        'es_favorito': es_favorito,
+        'tickets_vendidos': event.tickets_sold,  # <-- aquí
     })
+
 
 @login_required
 def event_delete(request, id):
