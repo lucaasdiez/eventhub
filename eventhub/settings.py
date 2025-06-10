@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,12 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure--f67ll=2-b2qolla9=1f8mtg@s=l8^y8aj=@ij-0f4)eg@%8(0"
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -76,8 +77,8 @@ WSGI_APPLICATION = "eventhub.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": os.environ.get('DB_ENGINE', 'django.db.backends.sqlite3'),
+        "NAME": BASE_DIR / os.environ.get('DB_NAME', 'db.sqlite3'),
     }
 }
 
@@ -102,6 +103,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 STATIC_URL = "/static/"
+STATIC_ROOT = os.environ.get('STATIC_ROOT', BASE_DIR / 'staticfiles')
 
 # Bootstrap 5
 STATICFILES_DIRS = [BASE_DIR / "static"]
