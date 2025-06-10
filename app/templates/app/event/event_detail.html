@@ -63,13 +63,19 @@
                     <div>
                         <h6 class="mb-0">Disponibilidad</h6>
                         {% if event.venue %}
-                            <p class="mb-0">
-                                {{ event.available_tickets }} entradas restantes de 
-                                {{ event.venue.capacity }} disponibles
-                            </p>
-                        {% else %}
-                            <p class="mb-0 text-muted">Sin límite de capacidad</p>
-                        {% endif %}
+    <p class="mb-0">
+        {{ event.venue.name }}<br>
+        {{ event.venue.address }}, {{ event.venue.city }}<br>
+        Capacidad: {{ event.venue.capacity }} personas<br>
+        Contacto: {{ event.venue.contact_info }}
+    </p>
+    <a href="https://maps.google.com/?q={{ event.venue.address|urlencode }}" target="_blank" class="btn btn-outline-primary btn-sm mt-2">
+        Ver en Google Maps
+    </a>
+{% else %}
+    <p class="mb-0 text-muted">No se ha asignado una ubicación</p>
+{% endif %}
+
                     </div>
                 </div>
                 
