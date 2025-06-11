@@ -42,10 +42,6 @@ RUN pip install --no-cache /wheels/*
 # Copiar el proyecto completo
 COPY . .
 
-# (Opcional) Esperar a DB antes de arrancar si usás PostgreSQL o similar
-COPY ./wait-for.sh /wait-for.sh
-RUN chmod +x /wait-for.sh
-
 # Ejecutar migraciones y recolectar archivos estáticos
 # Render ejecuta CMD en runtime, así que migraciones deberían ir en el entrypoint o directamente en tu start script
 RUN python manage.py collectstatic --no-input
