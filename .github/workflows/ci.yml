@@ -23,7 +23,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
         
     - name: Validate Django setup
       run: python manage.py check
@@ -57,7 +57,7 @@ jobs:
         
     - name: Install dependencies
       run: |
-        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
         
     - name: Generate temporary SECRET_KEY
       run: echo "SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(50))')" >> $GITHUB_ENV
@@ -99,7 +99,7 @@ jobs:
         
     - name: Install dependencies
       run: |
-        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
         
     - name: Install Playwright
       run: |
@@ -123,3 +123,4 @@ jobs:
       run: |
         python manage.py shell -c "from django.contrib.auth.models import User; User.objects.create_user('$TEST_USER', '', '$TEST_PASSWORD') if not User.objects.filter(username='$TEST_USER').exists() else None"
         playwright test tests/e2e/
+        
