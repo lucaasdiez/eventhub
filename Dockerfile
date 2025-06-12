@@ -46,4 +46,4 @@ COPY . .
 EXPOSE 8000
 
 # Comando para iniciar Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:${PORT}", "--workers", "2", "eventhub.wsgi"]
+CMD sh -c "gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2 eventhub.wsgi"
