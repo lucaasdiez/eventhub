@@ -39,8 +39,11 @@ WORKDIR /app
 COPY --from=builder /app/wheels /wheels
 RUN pip install --no-cache /wheels/* && rm -rf /root/.cache/pip
 
+COPY ./entrypoint.sh /app/entrypoint.sh
+
 # Copiar el proyecto completo
 COPY . .
+
 
 EXPOSE 8000
 
