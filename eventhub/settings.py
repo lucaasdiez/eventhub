@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 import os
+import dj_database_url
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -78,10 +79,11 @@ WSGI_APPLICATION = "eventhub.wsgi.application"
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
-        "NAME": os.getenv("DB_NAME", BASE_DIR / "db.sqlite3"),
-    }
+    'default': dj_database_url.config(
+        # Lee la variable de entorno DATABASE_URL que configuraremos en Render
+        # Si no la encuentra, usa una ruta por defecto para desarrollo local
+        default=f"sqlite:///{os.path.join(BASE_DIR, 'db.sqlite3')}"
+    )
 }
 
 
