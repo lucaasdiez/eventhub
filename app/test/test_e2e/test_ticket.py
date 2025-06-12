@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from django.test import LiveServerTestCase
-from playwright.sync_api import expect, sync_playwright
+from playwright.async_api import expect, async_playwright
 
 from app.models import Event, User, Venue
 
@@ -21,29 +21,21 @@ class TicketE2ETest(LiveServerTestCase):
             venue=venue
         )
 
-    def test_resumen_actualiza_con_js(self):
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+    async def test_resumen_actualiza_con_js(self):
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
 
-            # Ir a login
-            page.goto(f"{self.live_server_url}/accounts/login/")
-            page.fill('input[name="username"]', 'e2euser')
-            page.fill('input[name="password"]', '1234')
-            page.click('button[type="submit"]')
+            await page.goto(f"{self.live_server_url}/accounts/login/")
+            await page.fill('input[name="username"]', 'e2euser')
+            await page.fill('input[name="password"]', '1234')
+            await page.click('button[type="submit"]')
 
-            # Ir a página de compra
-            page.goto(f"{self.live_server_url}/tickets/new/")
+            await page.goto(f"{self.live_server_url}/tickets/new/")
+            await page.fill('#id_quantity', '4')
+            await page.select_option('#id_type', 'VIP')
+            await page.wait_for_timeout(500)
 
-            # Seleccionar cantidad y tipo
-            page.fill('#id_quantity', '4')
-            page.select_option('#id_type', 'VIP')
+            await expect(page.locator('#total')).to_have_text('$440.00')
 
-            # Esperar que se actualice el resumen
-            page.wait_for_timeout(500)  # medio segundo
-
-            # Verificar el total
-            expect(page.locator('#total')).to_have_text('$440.00')
-
-
-            browser.close()
+            await browser.close()
