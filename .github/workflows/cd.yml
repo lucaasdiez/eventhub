@@ -26,12 +26,11 @@ jobs:
               id: meta
               uses: docker/metadata-action@v5
               with:
-                  images: ${{ secrets.DOCKERHUB_USERNAME }}/vetsoft
+                  images: ${{ secrets.DOCKERHUB_USERNAME }}/eventhub
                   tags: |
                       type=raw,value=latest
                   labels: |
-                      org.opencontainers.image.title=VetSoft
-                      org.opencontainers.image.description=App para gestión veterinaria
+                      org.opencontainers.image.title=EventHub
 
             - name: Build and push Docker image
               id: build
@@ -45,3 +44,5 @@ jobs:
 
             - name: Trigger Render Deploy Hook
               run: curl -X GET ${{ secrets.RENDER_HOOK }}
+              env:
+                  RENDER_HOOK: ${{ secrets.RENDER_HOOK }}
