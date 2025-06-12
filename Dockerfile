@@ -42,7 +42,8 @@ COPY . .
 # Importante: NO ejecutar collectstatic aquí si depende de configuración de entorno o DB
 # RUN python manage.py collectstatic --no-input
 
+
 EXPOSE 8000
 
 # Comando para iniciar Gunicorn
-CMD ["gunicorn", "--bind", ":8000", "--workers", "2", "eventhub.wsgi"]
+CMD ["gunicorn", "--bind", "0.0.0.0:${PORT}", "--workers", "2", "eventhub.wsgi"]
