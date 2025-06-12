@@ -51,3 +51,4 @@ whitenoise==6.9.0
 wordcloud==1.9.4
 python-dotenv==1.0.0
 gunicorn==21.2.0
+dj_database_url
