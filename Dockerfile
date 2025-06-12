@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python manage.py collectstatic --noinput
+
 
 
 # Instalar dependencias de Python en formato wheel
@@ -45,6 +45,7 @@ COPY . .
 # Importante: NO ejecutar collectstatic aquí si depende de configuración de entorno o DB
 # RUN python manage.py collectstatic --no-input
 
+RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
