@@ -9,14 +9,14 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Instalar herramientas necesarias
+# Instalar herramientas necesarias para compilar dependencias
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar dependencias de Python
+# Instalar dependencias de Python en formato wheel
 COPY requirements.txt .
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
 
@@ -32,21 +32,17 @@ ENV DJANGO_SETTINGS_MODULE=eventhub.settings
 
 WORKDIR /app
 
-# Instalar netcat para wait-for.sh si lo usás
-RUN apt-get update && apt-get install -y netcat && rm -rf /var/lib/apt/lists/*
-
-# Instalar Python deps desde la etapa anterior
+# Instalar dependencias desde la etapa anterior
 COPY --from=builder /app/wheels /wheels
-RUN pip install --no-cache /wheels/*
+RUN pip install --no-cache /wheels/* && rm -rf /root/.cache/pip
 
 # Copiar el proyecto completo
 COPY . .
 
-# Ejecutar migraciones y recolectar archivos estáticos
-# Render ejecuta CMD en runtime, así que migraciones deberían ir en el entrypoint o directamente en tu start script
-RUN python manage.py collectstatic --no-input
+# Importante: NO ejecutar collectstatic aquí si depende de configuración de entorno o DB
+# RUN python manage.py collectstatic --no-input
 
 EXPOSE 8000
 
-# Comando final (usa wait-for.sh si hace falta esperar DB)
+# Comando para iniciar Gunicorn
 CMD ["gunicorn", "--bind", ":8000", "--workers", "2", "eventhub.wsgi"]
