@@ -42,11 +42,6 @@ RUN pip install --no-cache /wheels/* && rm -rf /root/.cache/pip
 # Copiar el proyecto completo
 COPY . .
 
-# Importante: NO ejecutar collectstatic aquí si depende de configuración de entorno o DB
-# RUN python manage.py collectstatic --no-input
-
-RUN python manage.py collectstatic --noinput
-
 EXPOSE 8000
 
 # Comando para iniciar Gunicorn
