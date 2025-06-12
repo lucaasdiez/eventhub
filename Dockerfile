@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+RUN python manage.py collectstatic --noinput
+
+
 # Instalar dependencias de Python en formato wheel
 COPY requirements.txt .
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
