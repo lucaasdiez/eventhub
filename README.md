@@ -18,15 +18,11 @@ Tomas Coch
 
 ## Dependencias
 
--   python 3
--   Django
--   sqlite
--   playwright
--   ruff
+-   Para ver las dependencias, entre al archivo requirements-dev.txt y el archivo requirements.txt
 
 ## Instalar dependencias
 
-`pip install -r requirements.txt`
+`pip install -r requirements-dev.txt`
 
 ## Iniciar la Base de Datos
 
