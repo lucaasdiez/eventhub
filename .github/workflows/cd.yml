@@ -4,7 +4,7 @@ on:
     workflow_run:
         workflows: ["CI EventHub"]
         types: [completed]
-        branches: [main]
+        branches: [fix/cd-actions-correciones]
 
     release:
         types: [published]
