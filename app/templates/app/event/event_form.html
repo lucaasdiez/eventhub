@@ -58,6 +58,9 @@
                                     name="scheduled_at"
                                     value="{{ form.scheduled_at.value|default:''|date:'Y-m-d\TH:i' }}"
                                     required>
+                                    <div class="text-danger mt-1">
+                                        {{ form.scheduled_at.errors }}
+                                    </div>
                                 </div>
                             </div>
                             <div>
