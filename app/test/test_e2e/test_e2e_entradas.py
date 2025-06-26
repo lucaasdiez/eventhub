@@ -15,7 +15,7 @@ class LoginE2ETest(LiveServerTestCase):
         )
 
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(headless=False)  # Cambia a True si querés sin GUI
+        self.browser = self.playwright.chromium.launch(headless=True)  # Cambia a True si querés sin GUI
         self.page = self.browser.new_page()
 
     def tearDown(self):
