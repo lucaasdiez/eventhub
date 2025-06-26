@@ -8,6 +8,7 @@ from app.models import Event, User, Venue
 
 from app.test.test_e2e.base import BaseE2ETest
 from django.utils.formats import date_format
+from django.template.defaultfilters import date
 
 
 class EventBaseTest(BaseE2ETest):
@@ -237,6 +238,13 @@ class EventCRUDTest(EventBaseTest):
         # Verificar que estamos en la página de creación de evento
         expect(self.page).to_have_url(f"{self.live_server_url}/events/create/")
 
+         # 1. Calcular una fecha futura dinámica
+        # Por ejemplo, 7 días a partir de hoy a las 16:45
+        future_date = datetime.datetime.now() + datetime.timedelta(days=7)
+        future_date_str = future_date.strftime("%Y-%m-%dT16:45")
+        date_for_assertion = date(future_date.replace(hour=16, minute=45), "j N Y, H:i")
+
+
         header = self.page.locator("h1")
         expect(header).to_have_text("Crear evento")
         expect(header).to_be_visible()
@@ -244,7 +252,7 @@ class EventCRUDTest(EventBaseTest):
         # Completar el formulario
         self.page.get_by_label("Título del Evento").fill("Evento de prueba E2E")
         self.page.get_by_label("Descripción").fill("Descripción creada desde prueba E2E")
-        self.page.get_by_label("Fecha y Hora").fill("2025-06-15T16:45")
+        self.page.get_by_label("Fecha y Hora").fill(future_date_str)
         self.page.get_by_label("Venue (Lugar) *").select_option(value=str(self.venue.id))
 
         # Enviar el formulario
@@ -260,7 +268,7 @@ class EventCRUDTest(EventBaseTest):
         row = self.page.locator("table tbody tr").first
         expect(row.locator("td").nth(0)).to_have_text("Evento de prueba E2E")
         expect(row.locator("td").nth(1)).to_have_text("Descripción creada desde prueba E2E")
-        expect(row.locator("td").nth(2)).to_have_text("15 junio 2025, 16:45")
+        expect(row.locator("td").nth(2)).to_have_text(date_for_assertion)
 
     def test_edit_event_organizer(self):
         self.login_user("organizador", "password123")
