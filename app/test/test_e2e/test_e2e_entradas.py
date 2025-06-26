@@ -1,20 +1,39 @@
-from django.test import TestCase
-from django.urls import reverse
+from playwright.sync_api import expect
+from django.test import LiveServerTestCase
 from app.models import User
 
-class EventHubLoginTest(TestCase):
+class LoginE2ETest(LiveServerTestCase):
+    # Configurar Playwright en setUp y tearDown
     def setUp(self):
-        self.user = User.objects.create_user(username="usuario_test", password="contraseña_test")
+        super().setUp()
+        from playwright.sync_api import sync_playwright
 
-    def test_login_redirects_to_events(self):
-        login_url = reverse('login')  # o la URL que uses para login, puede ser '/accounts/login/'
-        home_url = '/'       # o el nombre del path que quieras verificar
+        # Crear usuario para login
+        self.user = User.objects.create_user(
+            username="usuario_test",
+            password="contraseña_test"
+        )
 
-        # Hacer POST al login con las credenciales
-        response = self.client.post(login_url, {
-            'username': 'usuario_test',
-            'password': 'contraseña_test',
-        })
+        self.playwright = sync_playwright().start()
+        self.browser = self.playwright.chromium.launch(headless=False)  # Cambia a True si querés sin GUI
+        self.page = self.browser.new_page()
 
-        # Verificar que redirige a /
-        self.assertRedirects(response, home_url)
+    def tearDown(self):
+        self.browser.close()
+        self.playwright.stop()
+        super().tearDown()
+
+    def test_user_can_login_and_redirect(self):
+        login_url = f"{self.live_server_url}/accounts/login/"
+        home_url = f"{self.live_server_url}/"
+
+        self.page.goto(login_url)
+
+        self.page.fill('input[name="username"]', "usuario_test")
+        self.page.fill('input[name="password"]', "contraseña_test")
+
+        self.page.click('button[type="submit"]')
+
+        self.page.wait_for_url(home_url, timeout=15000)
+
+        assert self.page.url == home_url
