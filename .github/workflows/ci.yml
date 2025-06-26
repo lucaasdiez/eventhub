@@ -2,9 +2,9 @@ name: CI EventHub
 
 on:
     push:
-        branches: [fix/cd-actions-correciones]
+        branches: [main]
     pull_request:
-        branches: [fix/cd-actions-correciones]
+        branches: [main]
 
 jobs:
     build:
